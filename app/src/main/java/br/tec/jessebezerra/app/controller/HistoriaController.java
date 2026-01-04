@@ -488,6 +488,65 @@ public class HistoriaController extends BaseController {
         public SimpleStringProperty aplicacaoNomeProperty() { return aplicacaoNome; }
     }
     
+    /**
+     * Método público para editar um item a partir de um ItemSprintDTO
+     * Usado pela Timeline para abrir o formulário de edição
+     */
+    public void editItem(ItemSprintDTO item) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+        
+        // Armazenar ID para edição
+        editingId = item.getId();
+        
+        // Preencher formulário com dados do item
+        tituloField.setText(item.getTitulo());
+        descricaoTextArea.setText(item.getDescricao() != null ? item.getDescricao() : "");
+        duracaoSpinner.getValueFactory().setValue(item.getDuracaoSemanas() != null ? item.getDuracaoSemanas() : 1);
+        statusComboBox.setValue(item.getStatus());
+        
+        // Selecionar Sprint
+        if (item.getSprintId() != null) {
+            sprintComboBox.getItems().stream()
+                .filter(s -> s.getId().equals(item.getSprintId()))
+                .findFirst()
+                .ifPresent(sprintComboBox::setValue);
+        }
+        
+        // Selecionar Feature
+        if (item.getItemPaiId() != null) {
+            featureComboBox.getItems().stream()
+                .filter(f -> f.getId().equals(item.getItemPaiId()))
+                .findFirst()
+                .ifPresent(featureComboBox::setValue);
+        }
+        
+        // Selecionar Membro
+        if (item.getMembroId() != null) {
+            membroComboBox.getItems().stream()
+                .filter(m -> m.getId().equals(item.getMembroId()))
+                .findFirst()
+                .ifPresent(membroComboBox::setValue);
+        }
+        
+        // Selecionar Projeto
+        if (item.getProjetoId() != null) {
+            projetoComboBox.getItems().stream()
+                .filter(p -> p.getId().equals(item.getProjetoId()))
+                .findFirst()
+                .ifPresent(projetoComboBox::setValue);
+        }
+        
+        // Selecionar Aplicação
+        if (item.getAplicacaoId() != null) {
+            aplicacaoComboBox.getItems().stream()
+                .filter(a -> a.getId().equals(item.getAplicacaoId()))
+                .findFirst()
+                .ifPresent(aplicacaoComboBox::setValue);
+        }
+    }
+    
     @Override
     protected javafx.stage.Stage getCurrentStage() {
         return (javafx.stage.Stage) historiaTable.getScene().getWindow();

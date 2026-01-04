@@ -6,6 +6,7 @@ import br.tec.jessebezerra.app.dto.SprintDTO;
 import br.tec.jessebezerra.app.entity.TipoItem;
 import br.tec.jessebezerra.app.service.ItemSprintService;
 import br.tec.jessebezerra.app.service.MembroService;
+import br.tec.jessebezerra.app.service.PrioridadeService;
 import br.tec.jessebezerra.app.service.SprintService;
 import br.tec.jessebezerra.app.service.TimelineExcelService;
 import br.tec.jessebezerra.app.service.TimelineService;
@@ -14,6 +15,10 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -45,6 +50,9 @@ public class TimelineController extends BaseController {
     private CheckBox showTarefasCheckBox;
     
     @FXML
+    private CheckBox showSubsCheckBox;
+    
+    @FXML
     private CheckBox showProjetoCheckBox;
     
     @FXML
@@ -57,6 +65,7 @@ public class TimelineController extends BaseController {
     private TimelineService timelineService;
     private MembroService membroService;
     private TimelineExcelService excelService;
+    private PrioridadeService prioridadeService;
     
     private boolean menuExpanded = true;
     private SprintDTO selectedSprint;
@@ -72,6 +81,7 @@ public class TimelineController extends BaseController {
         this.timelineService = new TimelineService();
         this.membroService = new MembroService();
         this.excelService = new TimelineExcelService();
+        this.prioridadeService = new PrioridadeService();
         this.workingDays = new ArrayList<>();
     }
 
@@ -118,6 +128,7 @@ public class TimelineController extends BaseController {
             boolean showFeatures = showFeaturesCheckBox.isSelected();
             boolean showHistorias = showHistoriasCheckBox.isSelected();
             boolean showTarefas = showTarefasCheckBox.isSelected();
+            boolean showSubs = showSubsCheckBox.isSelected();
             boolean showProjeto = showProjetoCheckBox.isSelected();
             boolean showAplicacao = showAplicacaoCheckBox.isSelected();
             MembroDTO membroFilter = membroFilterComboBox.getValue();
@@ -127,6 +138,7 @@ public class TimelineController extends BaseController {
                 showFeatures, 
                 showHistorias, 
                 showTarefas, 
+                showSubs, 
                 showProjeto, 
                 showAplicacao, 
                 membroFilter
@@ -488,6 +500,18 @@ public class TimelineController extends BaseController {
         row.setStyle("-fx-border-color: #E0E0E0; -fx-border-width: 0 0 1 0; -fx-padding: 0;");
         row.setHgap(0);
         
+        // Adicionar drag-and-drop apenas para SUBs
+        if (item.getTipo() == TipoItem.SUB) {
+            setupDragAndDrop(row, item);
+        }
+        
+        // Adicionar menu de contexto para Features, Histórias e Tarefas
+        if (item.getTipo() == TipoItem.FEATURE) {
+            setupFeatureContextMenu(row, item);
+        } else if (item.getTipo() == TipoItem.HISTORIA || item.getTipo() == TipoItem.TAREFA) {
+            setupContextMenu(row, item);
+        }
+        
         // Coluna de tipo
         Label tipoLabel = new Label(tipo);
         tipoLabel.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: #333; -fx-font-size: 10px; " +
@@ -608,6 +632,7 @@ public class TimelineController extends BaseController {
         boolean showFeatures = showFeaturesCheckBox.isSelected();
         boolean showHistorias = showHistoriasCheckBox.isSelected();
         boolean showTarefas = showTarefasCheckBox.isSelected();
+        boolean showSubs = showSubsCheckBox.isSelected();
         MembroDTO selectedMembro = membroFilterComboBox.getValue();
         
         for (TimelineService.TimelineItem timelineItem : items) {
@@ -631,8 +656,7 @@ public class TimelineController extends BaseController {
             } 
             // SUBs (nível 3 - filhas de Tarefas ou Histórias)
             else if (item.getTipo() == TipoItem.SUB) {
-                // SUBs são exibidas se Histórias ou Tarefas estiverem marcadas
-                typeMatch = showHistorias || showTarefas;
+                typeMatch = showSubs;
             }
             
             if (!typeMatch) {
@@ -651,6 +675,558 @@ public class TimelineController extends BaseController {
         }
         
         return filteredItems;
+    }
+    
+    /**
+     * Configura menu de contexto para Features
+     */
+    private void setupFeatureContextMenu(GridPane row, ItemSprintDTO item) {
+        ContextMenu contextMenu = new ContextMenu();
+        
+        // Opção "Ver"
+        MenuItem verItem = new MenuItem("Ver");
+        verItem.setOnAction(event -> {
+            try {
+                openFeatureDetails(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao abrir detalhes: " + e.getMessage());
+            }
+        });
+        
+        // Opção "Criar História"
+        MenuItem criarHistoriaItem = new MenuItem("Criar História");
+        criarHistoriaItem.setOnAction(event -> {
+            try {
+                openCreateHistoriaDialog(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao criar História: " + e.getMessage());
+            }
+        });
+        
+        // Opção "Criar Tarefa"
+        MenuItem criarTarefaItem = new MenuItem("Criar Tarefa");
+        criarTarefaItem.setOnAction(event -> {
+            try {
+                openCreateTarefaDialog(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao criar Tarefa: " + e.getMessage());
+            }
+        });
+        
+        contextMenu.getItems().addAll(verItem, criarHistoriaItem, criarTarefaItem);
+        
+        // Adicionar menu de contexto à linha
+        row.setOnContextMenuRequested(event -> {
+            contextMenu.show(row, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+    }
+    
+    /**
+     * Configura menu de contexto para Histórias e Tarefas
+     */
+    private void setupContextMenu(GridPane row, ItemSprintDTO item) {
+        ContextMenu contextMenu = new ContextMenu();
+        
+        // Opção "Ver"
+        MenuItem verItem = new MenuItem("Ver");
+        verItem.setOnAction(event -> {
+            try {
+                openItemDetails(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao abrir detalhes: " + e.getMessage());
+            }
+        });
+        
+        // Opção "Criar SubItem"
+        MenuItem criarSubItem = new MenuItem("Criar SubItem");
+        criarSubItem.setOnAction(event -> {
+            try {
+                openCreateSubDialog(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao criar SubItem: " + e.getMessage());
+            }
+        });
+        
+        contextMenu.getItems().addAll(verItem, criarSubItem);
+        
+        // Adicionar menu de contexto à linha
+        row.setOnContextMenuRequested(event -> {
+            contextMenu.show(row, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+    }
+    
+    /**
+     * Abre detalhes do item (História ou Tarefa)
+     */
+    private void openItemDetails(ItemSprintDTO item) {
+        try {
+            String viewName = item.getTipo() == TipoItem.HISTORIA ? "historia-view.fxml" : "tarefa-view.fxml";
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                getClass().getResource("/br/tec/jessebezerra/app/" + viewName)
+            );
+            
+            javafx.scene.Parent root = loader.load();
+            
+            // Obter controller e passar o item para edição
+            Object controller = loader.getController();
+            if (item.getTipo() == TipoItem.HISTORIA) {
+                br.tec.jessebezerra.app.controller.HistoriaController historiaController = 
+                    (br.tec.jessebezerra.app.controller.HistoriaController) controller;
+                historiaController.editItem(item);
+            } else {
+                br.tec.jessebezerra.app.controller.TarefaController tarefaController = 
+                    (br.tec.jessebezerra.app.controller.TarefaController) controller;
+                tarefaController.editItem(item);
+            }
+            
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle(item.getTipo() == TipoItem.HISTORIA ? "Detalhes da História" : "Detalhes da Tarefa");
+            stage.setScene(new javafx.scene.Scene(root, 1200, 800));
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(600);
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+            
+            // Recarregar timeline após fechar
+            loadAndBuildTimeline();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorAlert("Erro", "Erro ao abrir detalhes: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Abre dialog para criar SUB
+     */
+    private void openCreateSubDialog(ItemSprintDTO parentItem) {
+        javafx.scene.control.Dialog<ItemSprintDTO> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Criar SubItem");
+        dialog.setHeaderText("Criar SubItem para: " + parentItem.getTitulo());
+        
+        // Botões
+        javafx.scene.control.ButtonType salvarButtonType = new javafx.scene.control.ButtonType("Salvar", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(salvarButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        // Criar formulário
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        javafx.scene.control.TextField tituloField = new javafx.scene.control.TextField();
+        tituloField.setPromptText("Título da SUB");
+        
+        javafx.scene.control.TextArea descricaoArea = new javafx.scene.control.TextArea();
+        descricaoArea.setPromptText("Descrição");
+        descricaoArea.setPrefRowCount(3);
+        
+        javafx.scene.control.TextField duracaoDiasField = new javafx.scene.control.TextField();
+        duracaoDiasField.setPromptText("Duração em dias");
+        
+        javafx.scene.control.ComboBox<MembroDTO> membroComboBox = new javafx.scene.control.ComboBox<>();
+        membroComboBox.setItems(javafx.collections.FXCollections.observableArrayList(membroService.findAll()));
+        membroComboBox.setPromptText("Selecione um membro");
+        
+        javafx.scene.control.ComboBox<String> statusComboBox = new javafx.scene.control.ComboBox<>();
+        statusComboBox.setItems(javafx.collections.FXCollections.observableArrayList(
+            "CRIADO", "PLANEJADO", "REFINADO", "EM_EXECUCAO", "EM_TESTES", "CONCLUIDO", "CANCELADO", "IMPEDIDO"
+        ));
+        statusComboBox.setValue("CRIADO");
+        
+        grid.add(new javafx.scene.control.Label("Título:"), 0, 0);
+        grid.add(tituloField, 1, 0);
+        grid.add(new javafx.scene.control.Label("Descrição:"), 0, 1);
+        grid.add(descricaoArea, 1, 1);
+        grid.add(new javafx.scene.control.Label("Duração (dias):"), 0, 2);
+        grid.add(duracaoDiasField, 1, 2);
+        grid.add(new javafx.scene.control.Label("Membro:"), 0, 3);
+        grid.add(membroComboBox, 1, 3);
+        grid.add(new javafx.scene.control.Label("Status:"), 0, 4);
+        grid.add(statusComboBox, 1, 4);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        // Focar no campo título
+        javafx.application.Platform.runLater(() -> tituloField.requestFocus());
+        
+        // Validação e conversão do resultado
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == salvarButtonType) {
+                if (tituloField.getText().trim().isEmpty()) {
+                    showErrorAlert("Erro", "O título é obrigatório!");
+                    return null;
+                }
+                
+                ItemSprintDTO sub = new ItemSprintDTO();
+                sub.setTipo(TipoItem.SUB);
+                sub.setTitulo(tituloField.getText().trim());
+                sub.setDescricao(descricaoArea.getText().trim());
+                sub.setSprintId(parentItem.getSprintId());
+                sub.setItemPaiId(parentItem.getId());
+                sub.setStatus(br.tec.jessebezerra.app.entity.StatusItem.valueOf(statusComboBox.getValue()));
+                
+                if (!duracaoDiasField.getText().trim().isEmpty()) {
+                    try {
+                        sub.setDuracaoDias(Integer.parseInt(duracaoDiasField.getText().trim()));
+                    } catch (NumberFormatException e) {
+                        showErrorAlert("Erro", "Duração deve ser um número válido!");
+                        return null;
+                    }
+                }
+                
+                if (membroComboBox.getValue() != null) {
+                    sub.setMembroId(membroComboBox.getValue().getId());
+                }
+                
+                return sub;
+            }
+            return null;
+        });
+        
+        // Mostrar dialog e processar resultado
+        java.util.Optional<ItemSprintDTO> result = dialog.showAndWait();
+        result.ifPresent(sub -> {
+            try {
+                ItemSprintService itemSprintService = new ItemSprintService();
+                itemSprintService.create(sub);
+                showAlert("Sucesso", "SubItem criado com sucesso!");
+                loadAndBuildTimeline();
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao salvar SubItem: " + e.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * Abre detalhes da Feature
+     */
+    private void openFeatureDetails(ItemSprintDTO item) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                getClass().getResource("/br/tec/jessebezerra/app/feature-view.fxml")
+            );
+            
+            javafx.scene.Parent root = loader.load();
+            
+            // Obter controller e passar o item para edição
+            br.tec.jessebezerra.app.controller.FeatureController featureController = 
+                (br.tec.jessebezerra.app.controller.FeatureController) loader.getController();
+            featureController.editItem(item);
+            
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Detalhes da Feature");
+            stage.setScene(new javafx.scene.Scene(root, 1200, 800));
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(600);
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+            
+            // Recarregar timeline após fechar
+            loadAndBuildTimeline();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorAlert("Erro", "Erro ao abrir detalhes: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Abre dialog para criar História filha de uma Feature
+     */
+    private void openCreateHistoriaDialog(ItemSprintDTO parentFeature) {
+        javafx.scene.control.Dialog<ItemSprintDTO> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Criar História");
+        dialog.setHeaderText("Nova História para Feature: " + parentFeature.getTitulo());
+        
+        javafx.scene.control.ButtonType salvarButtonType = new javafx.scene.control.ButtonType("Salvar", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(salvarButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        javafx.scene.control.TextField tituloField = new javafx.scene.control.TextField();
+        tituloField.setPromptText("Título");
+        
+        javafx.scene.control.TextArea descricaoArea = new javafx.scene.control.TextArea();
+        descricaoArea.setPromptText("Descrição");
+        descricaoArea.setPrefRowCount(3);
+        
+        javafx.scene.control.TextField duracaoSemanasField = new javafx.scene.control.TextField();
+        duracaoSemanasField.setPromptText("Duração em semanas");
+        
+        javafx.scene.control.ComboBox<MembroDTO> membroComboBox = new javafx.scene.control.ComboBox<>();
+        membroComboBox.setItems(javafx.collections.FXCollections.observableArrayList(membroService.findAll()));
+        membroComboBox.setPromptText("Selecione um membro");
+        
+        javafx.scene.control.ComboBox<String> statusComboBox = new javafx.scene.control.ComboBox<>();
+        statusComboBox.setItems(javafx.collections.FXCollections.observableArrayList(
+            "CRIADO", "PLANEJADO", "REFINADO", "EM_EXECUCAO", "EM_TESTES", "CONCLUIDO", "CANCELADO", "IMPEDIDO"
+        ));
+        statusComboBox.setValue("CRIADO");
+        
+        grid.add(new javafx.scene.control.Label("Título:"), 0, 0);
+        grid.add(tituloField, 1, 0);
+        grid.add(new javafx.scene.control.Label("Descrição:"), 0, 1);
+        grid.add(descricaoArea, 1, 1);
+        grid.add(new javafx.scene.control.Label("Duração (semanas):"), 0, 2);
+        grid.add(duracaoSemanasField, 1, 2);
+        grid.add(new javafx.scene.control.Label("Membro:"), 0, 3);
+        grid.add(membroComboBox, 1, 3);
+        grid.add(new javafx.scene.control.Label("Status:"), 0, 4);
+        grid.add(statusComboBox, 1, 4);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        javafx.application.Platform.runLater(() -> tituloField.requestFocus());
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == salvarButtonType) {
+                if (tituloField.getText().trim().isEmpty()) {
+                    showErrorAlert("Erro", "O título é obrigatório!");
+                    return null;
+                }
+                
+                ItemSprintDTO historia = new ItemSprintDTO();
+                historia.setTipo(TipoItem.HISTORIA);
+                historia.setTitulo(tituloField.getText().trim());
+                historia.setDescricao(descricaoArea.getText().trim());
+                historia.setSprintId(parentFeature.getSprintId());
+                historia.setItemPaiId(parentFeature.getId());
+                historia.setStatus(br.tec.jessebezerra.app.entity.StatusItem.valueOf(statusComboBox.getValue()));
+                
+                if (!duracaoSemanasField.getText().trim().isEmpty()) {
+                    try {
+                        historia.setDuracaoSemanas(Integer.parseInt(duracaoSemanasField.getText().trim()));
+                    } catch (NumberFormatException e) {
+                        showErrorAlert("Erro", "Duração deve ser um número válido!");
+                        return null;
+                    }
+                }
+                
+                if (membroComboBox.getValue() != null) {
+                    historia.setMembroId(membroComboBox.getValue().getId());
+                }
+                
+                return historia;
+            }
+            return null;
+        });
+        
+        java.util.Optional<ItemSprintDTO> result = dialog.showAndWait();
+        result.ifPresent(historia -> {
+            try {
+                ItemSprintService itemSprintService = new ItemSprintService();
+                itemSprintService.create(historia);
+                showAlert("Sucesso", "História criada com sucesso!");
+                loadAndBuildTimeline();
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao salvar História: " + e.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * Abre dialog para criar Tarefa filha de uma Feature
+     */
+    private void openCreateTarefaDialog(ItemSprintDTO parentFeature) {
+        javafx.scene.control.Dialog<ItemSprintDTO> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Criar Tarefa");
+        dialog.setHeaderText("Nova Tarefa para Feature: " + parentFeature.getTitulo());
+        
+        javafx.scene.control.ButtonType salvarButtonType = new javafx.scene.control.ButtonType("Salvar", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(salvarButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        javafx.scene.control.TextField tituloField = new javafx.scene.control.TextField();
+        tituloField.setPromptText("Título");
+        
+        javafx.scene.control.TextArea descricaoArea = new javafx.scene.control.TextArea();
+        descricaoArea.setPromptText("Descrição");
+        descricaoArea.setPrefRowCount(3);
+        
+        javafx.scene.control.TextField duracaoSemanasField = new javafx.scene.control.TextField();
+        duracaoSemanasField.setPromptText("Duração em semanas");
+        
+        javafx.scene.control.ComboBox<MembroDTO> membroComboBox = new javafx.scene.control.ComboBox<>();
+        membroComboBox.setItems(javafx.collections.FXCollections.observableArrayList(membroService.findAll()));
+        membroComboBox.setPromptText("Selecione um membro");
+        
+        javafx.scene.control.ComboBox<String> statusComboBox = new javafx.scene.control.ComboBox<>();
+        statusComboBox.setItems(javafx.collections.FXCollections.observableArrayList(
+            "CRIADO", "PLANEJADO", "REFINADO", "EM_EXECUCAO", "EM_TESTES", "CONCLUIDO", "CANCELADO", "IMPEDIDO"
+        ));
+        statusComboBox.setValue("CRIADO");
+        
+        grid.add(new javafx.scene.control.Label("Título:"), 0, 0);
+        grid.add(tituloField, 1, 0);
+        grid.add(new javafx.scene.control.Label("Descrição:"), 0, 1);
+        grid.add(descricaoArea, 1, 1);
+        grid.add(new javafx.scene.control.Label("Duração (semanas):"), 0, 2);
+        grid.add(duracaoSemanasField, 1, 2);
+        grid.add(new javafx.scene.control.Label("Membro:"), 0, 3);
+        grid.add(membroComboBox, 1, 3);
+        grid.add(new javafx.scene.control.Label("Status:"), 0, 4);
+        grid.add(statusComboBox, 1, 4);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        javafx.application.Platform.runLater(() -> tituloField.requestFocus());
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == salvarButtonType) {
+                if (tituloField.getText().trim().isEmpty()) {
+                    showErrorAlert("Erro", "O título é obrigatório!");
+                    return null;
+                }
+                
+                ItemSprintDTO tarefa = new ItemSprintDTO();
+                tarefa.setTipo(TipoItem.TAREFA);
+                tarefa.setTitulo(tituloField.getText().trim());
+                tarefa.setDescricao(descricaoArea.getText().trim());
+                tarefa.setSprintId(parentFeature.getSprintId());
+                tarefa.setItemPaiId(parentFeature.getId());
+                tarefa.setStatus(br.tec.jessebezerra.app.entity.StatusItem.valueOf(statusComboBox.getValue()));
+                
+                if (!duracaoSemanasField.getText().trim().isEmpty()) {
+                    try {
+                        tarefa.setDuracaoSemanas(Integer.parseInt(duracaoSemanasField.getText().trim()));
+                    } catch (NumberFormatException e) {
+                        showErrorAlert("Erro", "Duração deve ser um número válido!");
+                        return null;
+                    }
+                }
+                
+                if (membroComboBox.getValue() != null) {
+                    tarefa.setMembroId(membroComboBox.getValue().getId());
+                }
+                
+                return tarefa;
+            }
+            return null;
+        });
+        
+        java.util.Optional<ItemSprintDTO> result = dialog.showAndWait();
+        result.ifPresent(tarefa -> {
+            try {
+                ItemSprintService itemSprintService = new ItemSprintService();
+                itemSprintService.create(tarefa);
+                showAlert("Sucesso", "Tarefa criada com sucesso!");
+                loadAndBuildTimeline();
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao salvar Tarefa: " + e.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * Configura drag-and-drop para reordenação de SUBs
+     */
+    private void setupDragAndDrop(GridPane row, ItemSprintDTO item) {
+        // Tornar a linha arrastável
+        row.setOnDragDetected(event -> {
+            if (item.getTipo() == TipoItem.SUB) {
+                Dragboard db = row.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString(item.getId().toString());
+                db.setContent(content);
+                row.setStyle(row.getStyle() + "-fx-opacity: 0.5;");
+                event.consume();
+            }
+        });
+        
+        // Permitir drop sobre outras SUBs
+        row.setOnDragOver(event -> {
+            if (event.getGestureSource() != row && 
+                event.getDragboard().hasString() &&
+                item.getTipo() == TipoItem.SUB) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+        
+        // Destacar linha quando drag está sobre ela
+        row.setOnDragEntered(event -> {
+            if (event.getGestureSource() != row && 
+                event.getDragboard().hasString() &&
+                item.getTipo() == TipoItem.SUB) {
+                row.setStyle(row.getStyle() + "-fx-border-color: #2196F3; -fx-border-width: 2;");
+            }
+            event.consume();
+        });
+        
+        // Remover destaque quando drag sai
+        row.setOnDragExited(event -> {
+            row.setStyle(row.getStyle().replace("-fx-border-color: #2196F3; -fx-border-width: 2;", ""));
+            event.consume();
+        });
+        
+        // Executar drop
+        row.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            
+            if (db.hasString()) {
+                try {
+                    Long draggedSubId = Long.parseLong(db.getString());
+                    Long targetSubId = item.getId();
+                    
+                    // Verificar se são SUBs do mesmo pai
+                    ItemSprintDTO draggedSub = new ItemSprintService().findById(draggedSubId).orElse(null);
+                    ItemSprintDTO targetSub = item;
+                    
+                    if (draggedSub != null && 
+                        draggedSub.getItemPaiId() != null &&
+                        draggedSub.getItemPaiId().equals(targetSub.getItemPaiId())) {
+                        
+                        // Obter todas as SUBs do mesmo pai ordenadas
+                        List<ItemSprintDTO> subs = prioridadeService.getOrderedSubs(targetSub.getItemPaiId());
+                        
+                        // Encontrar posições
+                        int targetPosition = -1;
+                        for (int i = 0; i < subs.size(); i++) {
+                            if (subs.get(i).getId().equals(targetSubId)) {
+                                targetPosition = i;
+                                break;
+                            }
+                        }
+                        
+                        if (targetPosition >= 0) {
+                            // Reordenar
+                            prioridadeService.reorderSub(draggedSubId, targetPosition);
+                            
+                            // Recarregar timeline
+                            loadAndBuildTimeline();
+                            success = true;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    showErrorAlert("Erro", "Erro ao reordenar SUB: " + e.getMessage());
+                }
+            }
+            
+            event.setDropCompleted(success);
+            event.consume();
+        });
+        
+        // Restaurar opacidade quando drag termina
+        row.setOnDragDone(event -> {
+            row.setStyle(row.getStyle().replace("-fx-opacity: 0.5;", ""));
+            event.consume();
+        });
+        
+        // Adicionar cursor de mão para indicar que é arrastável
+        row.setOnMouseEntered(event -> row.setStyle(row.getStyle() + "-fx-cursor: hand;"));
+        row.setOnMouseExited(event -> row.setStyle(row.getStyle().replace("-fx-cursor: hand;", "")));
     }
     
     @Override

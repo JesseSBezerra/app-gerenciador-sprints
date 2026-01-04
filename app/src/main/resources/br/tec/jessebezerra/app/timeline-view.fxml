@@ -55,6 +55,7 @@
                         <CheckBox fx:id="showFeaturesCheckBox" text="Features" selected="true" onAction="#onFilterChanged"/>
                         <CheckBox fx:id="showHistoriasCheckBox" text="Histórias" selected="true" onAction="#onFilterChanged"/>
                         <CheckBox fx:id="showTarefasCheckBox" text="Tarefas" selected="true" onAction="#onFilterChanged"/>
+                        <CheckBox fx:id="showSubsCheckBox" text="SUBs" selected="true" onAction="#onFilterChanged"/>
                     </HBox>
                 </VBox>
                 
