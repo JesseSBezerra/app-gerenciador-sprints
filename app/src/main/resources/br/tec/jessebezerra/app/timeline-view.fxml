@@ -47,6 +47,45 @@
                 <Insets top="20" right="20" bottom="20" left="20"/>
             </VBox.margin>
             
+            <!-- Área de Filtros -->
+            <HBox spacing="20" alignment="CENTER_LEFT" styleClass="filter-section">
+                <VBox spacing="8">
+                    <Label text="Exibir Itens:" styleClass="filter-label" style="-fx-font-weight: bold;"/>
+                    <HBox spacing="15">
+                        <CheckBox fx:id="showFeaturesCheckBox" text="Features" selected="true" onAction="#onFilterChanged"/>
+                        <CheckBox fx:id="showHistoriasCheckBox" text="Histórias" selected="true" onAction="#onFilterChanged"/>
+                        <CheckBox fx:id="showTarefasCheckBox" text="Tarefas" selected="true" onAction="#onFilterChanged"/>
+                    </HBox>
+                </VBox>
+                
+                <Separator orientation="VERTICAL" prefHeight="50"/>
+                
+                <VBox spacing="8">
+                    <Label text="Exibir Colunas:" styleClass="filter-label" style="-fx-font-weight: bold;"/>
+                    <HBox spacing="15">
+                        <CheckBox fx:id="showProjetoCheckBox" text="Projeto" selected="false" onAction="#onColumnVisibilityChanged"/>
+                        <CheckBox fx:id="showAplicacaoCheckBox" text="Aplicação" selected="false" onAction="#onColumnVisibilityChanged"/>
+                    </HBox>
+                </VBox>
+                
+                <Separator orientation="VERTICAL" prefHeight="50"/>
+                
+                <VBox spacing="8">
+                    <Label text="Filtrar por Membro:" styleClass="filter-label" style="-fx-font-weight: bold;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <ComboBox fx:id="membroFilterComboBox" promptText="Todos os membros" prefWidth="200" onAction="#onFilterChanged"/>
+                        <Button text="Limpar" onAction="#onClearMembroFilter" styleClass="secondary-button"/>
+                    </HBox>
+                </VBox>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <Button text="📊 Excel" onAction="#onExportToExcel" styleClass="primary-button" style="-fx-background-color: #28a745;"/>
+                <Button text="🔄 Atualizar" onAction="#onRefreshTimeline" styleClass="primary-button"/>
+            </HBox>
+            
+            <Separator/>
+            
             <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS" styleClass="sprint-table">
                 <VBox fx:id="timelineContainer" spacing="0"/>
             </ScrollPane>

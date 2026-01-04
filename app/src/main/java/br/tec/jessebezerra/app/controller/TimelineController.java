@@ -1,10 +1,13 @@
 package br.tec.jessebezerra.app.controller;
 
 import br.tec.jessebezerra.app.dto.ItemSprintDTO;
+import br.tec.jessebezerra.app.dto.MembroDTO;
 import br.tec.jessebezerra.app.dto.SprintDTO;
 import br.tec.jessebezerra.app.entity.TipoItem;
 import br.tec.jessebezerra.app.service.ItemSprintService;
+import br.tec.jessebezerra.app.service.MembroService;
 import br.tec.jessebezerra.app.service.SprintService;
+import br.tec.jessebezerra.app.service.TimelineExcelService;
 import br.tec.jessebezerra.app.service.TimelineService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -32,8 +35,28 @@ public class TimelineController extends BaseController {
     @FXML
     private VBox timelineContainer;
     
+    @FXML
+    private CheckBox showFeaturesCheckBox;
+    
+    @FXML
+    private CheckBox showHistoriasCheckBox;
+    
+    @FXML
+    private CheckBox showTarefasCheckBox;
+    
+    @FXML
+    private CheckBox showProjetoCheckBox;
+    
+    @FXML
+    private CheckBox showAplicacaoCheckBox;
+    
+    @FXML
+    private ComboBox<MembroDTO> membroFilterComboBox;
+    
     private SprintService sprintService;
     private TimelineService timelineService;
+    private MembroService membroService;
+    private TimelineExcelService excelService;
     
     private boolean menuExpanded = true;
     private SprintDTO selectedSprint;
@@ -47,12 +70,79 @@ public class TimelineController extends BaseController {
     public TimelineController() {
         this.sprintService = new SprintService();
         this.timelineService = new TimelineService();
+        this.membroService = new MembroService();
+        this.excelService = new TimelineExcelService();
         this.workingDays = new ArrayList<>();
     }
 
     @FXML
     public void initialize() {
+        loadMembros();
         loadAndBuildTimeline();
+    }
+    
+    private void loadMembros() {
+        List<MembroDTO> membros = membroService.findAll();
+        membroFilterComboBox.setItems(FXCollections.observableArrayList(membros));
+    }
+    
+    @FXML
+    protected void onFilterChanged() {
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onClearMembroFilter() {
+        membroFilterComboBox.setValue(null);
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onRefreshTimeline() {
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onColumnVisibilityChanged() {
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onExportToExcel() {
+        if (selectedSprint == null) {
+            showErrorAlert("Erro", "Nenhuma sprint selecionada para exportar.");
+            return;
+        }
+        
+        try {
+            boolean showFeatures = showFeaturesCheckBox.isSelected();
+            boolean showHistorias = showHistoriasCheckBox.isSelected();
+            boolean showTarefas = showTarefasCheckBox.isSelected();
+            boolean showProjeto = showProjetoCheckBox.isSelected();
+            boolean showAplicacao = showAplicacaoCheckBox.isSelected();
+            MembroDTO membroFilter = membroFilterComboBox.getValue();
+            
+            java.io.File excelFile = excelService.exportToExcel(
+                selectedSprint, 
+                showFeatures, 
+                showHistorias, 
+                showTarefas, 
+                showProjeto, 
+                showAplicacao, 
+                membroFilter
+            );
+            
+            // Abrir o arquivo gerado
+            if (java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(excelFile);
+            }
+            
+            showAlert("Sucesso", "Excel gerado com sucesso!\nArquivo: " + excelFile.getAbsolutePath());
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorAlert("Erro", "Erro ao gerar Excel: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -93,6 +183,9 @@ public class TimelineController extends BaseController {
         // Buscar itens organizados hierarquicamente
         List<TimelineService.TimelineItem> timelineItems = timelineService.buildHierarchicalTimeline(selectedSprint.getId());
         
+        // Aplicar filtros
+        timelineItems = applyFilters(timelineItems);
+        
         // Buscar todos os itens para cálculos
         List<ItemSprintDTO> allItems = new ArrayList<>();
         for (TimelineService.TimelineItem ti : timelineItems) {
@@ -103,7 +196,7 @@ public class TimelineController extends BaseController {
         Map<Long, Integer> memberAllocations = new HashMap<>();
         
         int colorIndex = 0;
-        String currentFeatureColor = null;
+        String currentFeatureColor = COLORS[0]; // Cor padrão inicial
         
         for (TimelineService.TimelineItem timelineItem : timelineItems) {
             ItemSprintDTO item = timelineItem.getItem();
@@ -113,12 +206,15 @@ public class TimelineController extends BaseController {
             // Definir cor baseada no nível
             String rowColor;
             if (indentLevel == 0) {
+                // Feature - atribuir nova cor
                 currentFeatureColor = COLORS[colorIndex % COLORS.length];
                 colorIndex++;
                 rowColor = currentFeatureColor;
             } else if (indentLevel == 1) {
+                // História - usar cor da Feature pai (ou cor padrão se Feature foi filtrada)
                 rowColor = adjustBrightness(currentFeatureColor, 0.9);
             } else {
+                // Tarefa/SUB - usar cor da Feature pai (ou cor padrão se Feature foi filtrada)
                 rowColor = adjustBrightness(currentFeatureColor, 0.8);
             }
             
@@ -153,17 +249,37 @@ public class TimelineController extends BaseController {
         
         int totalDays = workingDays.size();
         
-        // LINHA 0: "ROADMAP" mesclado até PESSOAS (rosa) + Nome da Sprint mesclado nas semanas (laranja)
+        // Calcular largura das colunas extras
+        boolean showProjeto = showProjetoCheckBox.isSelected();
+        boolean showAplicacao = showAplicacaoCheckBox.isSelected();
+        int extraColumnsWidth = 0;
+        int extraColumnsCount = 0;
+        
+        if (showProjeto) {
+            extraColumnsWidth += 120;
+            extraColumnsCount++;
+        }
+        if (showAplicacao) {
+            extraColumnsWidth += 120;
+            extraColumnsCount++;
+        }
+        
+        int roadmapWidth = 580 + extraColumnsWidth;
+        int itensSprintWidth = 430;
+        int pessoasWidth = 150;
+        int currentCol = 0;
+        
+        // LINHA 0: "ROADMAP" mesclado até PESSOAS + colunas extras (rosa) + Nome da Sprint mesclado nas semanas (laranja)
         Label roadmapLabel = new Label("ROADMAP");
         roadmapLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 13px; " +
             "-fx-background-color: #FFB6D9; -fx-padding: 8; -fx-alignment: center; " +
             "-fx-border-color: transparent; -fx-border-width: 0;");
-        roadmapLabel.setMinWidth(580);
-        roadmapLabel.setMaxWidth(580);
+        roadmapLabel.setMinWidth(roadmapWidth);
+        roadmapLabel.setMaxWidth(roadmapWidth);
         roadmapLabel.setMinHeight(35);
         roadmapLabel.setMaxHeight(35);
         roadmapLabel.setAlignment(Pos.CENTER);
-        header.add(roadmapLabel, 0, 0, 3, 1);
+        header.add(roadmapLabel, 0, 0, 3 + extraColumnsCount, 1);
         
         // Nome da Sprint mesclado sobre todas as semanas (laranja)
         Label sprintNameLabel = new Label(selectedSprint.getNome().toUpperCase());
@@ -175,33 +291,64 @@ public class TimelineController extends BaseController {
         sprintNameLabel.setMinHeight(35);
         sprintNameLabel.setMaxHeight(35);
         sprintNameLabel.setAlignment(Pos.CENTER);
-        header.add(sprintNameLabel, 3, 0, totalDays, 1);
+        header.add(sprintNameLabel, 3 + extraColumnsCount, 0, totalDays, 1);
         
-        // LINHA 1: "ITENS DA SPRINT" mesclado (laranja claro) + Semanas
+        // LINHA 1: "ITENS DA SPRINT" mesclado (laranja claro)
         Label itensSprintLabel = new Label("ITENS DA SPRINT");
         itensSprintLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 12px; " +
             "-fx-background-color: #FFD4A3; -fx-padding: 5; -fx-alignment: center;");
-        itensSprintLabel.setMinWidth(430);
-        itensSprintLabel.setMaxWidth(430);
+        itensSprintLabel.setMinWidth(itensSprintWidth);
+        itensSprintLabel.setMaxWidth(itensSprintWidth);
         itensSprintLabel.setMinHeight(30);
         itensSprintLabel.setMaxHeight(30);
         itensSprintLabel.setAlignment(Pos.CENTER);
         header.add(itensSprintLabel, 0, 1, 2, 1);
         
-        // "PESSOAS" mesclado (laranja claro)
+        currentCol = 2;
+        
+        // "PESSOAS" (laranja claro)
         Label pessoasHeaderLabel = new Label("PESSOAS");
         pessoasHeaderLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 12px; " +
             "-fx-background-color: #FFD4A3; -fx-padding: 5; -fx-alignment: center;");
-        pessoasHeaderLabel.setMinWidth(150);
-        pessoasHeaderLabel.setMaxWidth(150);
+        pessoasHeaderLabel.setMinWidth(pessoasWidth);
+        pessoasHeaderLabel.setMaxWidth(pessoasWidth);
         pessoasHeaderLabel.setMinHeight(30);
         pessoasHeaderLabel.setMaxHeight(30);
         pessoasHeaderLabel.setAlignment(Pos.CENTER);
-        header.add(pessoasHeaderLabel, 2, 1);
+        header.add(pessoasHeaderLabel, currentCol, 1);
+        currentCol++;
+        
+        // "PROJETO" se visível (laranja claro)
+        if (showProjeto) {
+            Label projetoHeaderLabel = new Label("PROJETO");
+            projetoHeaderLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 12px; " +
+                "-fx-background-color: #FFD4A3; -fx-padding: 5; -fx-alignment: center;");
+            projetoHeaderLabel.setMinWidth(120);
+            projetoHeaderLabel.setMaxWidth(120);
+            projetoHeaderLabel.setMinHeight(30);
+            projetoHeaderLabel.setMaxHeight(30);
+            projetoHeaderLabel.setAlignment(Pos.CENTER);
+            header.add(projetoHeaderLabel, currentCol, 1);
+            currentCol++;
+        }
+        
+        // "APLICAÇÃO" se visível (laranja claro)
+        if (showAplicacao) {
+            Label aplicacaoHeaderLabel = new Label("APLICAÇÃO");
+            aplicacaoHeaderLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 12px; " +
+                "-fx-background-color: #FFD4A3; -fx-padding: 5; -fx-alignment: center;");
+            aplicacaoHeaderLabel.setMinWidth(120);
+            aplicacaoHeaderLabel.setMaxWidth(120);
+            aplicacaoHeaderLabel.setMinHeight(30);
+            aplicacaoHeaderLabel.setMaxHeight(30);
+            aplicacaoHeaderLabel.setAlignment(Pos.CENTER);
+            header.add(aplicacaoHeaderLabel, currentCol, 1);
+            currentCol++;
+        }
         
         // Separar dias por semanas na LINHA 1
         String[] weekColors = {"#A8D5E2", "#7FB3D5", "#5499C7"}; // Azul claro ao escuro
-        int colIndex = 3;
+        int colIndex = currentCol; // Começa após as colunas de PESSOAS, PROJETO e APLICAÇÃO
         int weekNumber = 1;
         int daysInCurrentWeek = 0;
         int weekStartCol = colIndex;
@@ -263,8 +410,38 @@ public class TimelineController extends BaseController {
         pessoasLabel.setAlignment(Pos.CENTER);
         header.add(pessoasLabel, 2, 2);
         
+        currentCol = 3;
+        
+        // Adicionar coluna PROJETO na linha 2 se visível
+        if (showProjeto) {
+            Label projetoDetailLabel = new Label("PROJETO");
+            projetoDetailLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
+                "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
+            projetoDetailLabel.setMinWidth(120);
+            projetoDetailLabel.setMaxWidth(120);
+            projetoDetailLabel.setMinHeight(25);
+            projetoDetailLabel.setMaxHeight(25);
+            projetoDetailLabel.setAlignment(Pos.CENTER);
+            header.add(projetoDetailLabel, currentCol, 2);
+            currentCol++;
+        }
+        
+        // Adicionar coluna APLICAÇÃO na linha 2 se visível
+        if (showAplicacao) {
+            Label aplicacaoDetailLabel = new Label("APLICAÇÃO");
+            aplicacaoDetailLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
+                "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
+            aplicacaoDetailLabel.setMinWidth(120);
+            aplicacaoDetailLabel.setMaxWidth(120);
+            aplicacaoDetailLabel.setMinHeight(25);
+            aplicacaoDetailLabel.setMaxHeight(25);
+            aplicacaoDetailLabel.setAlignment(Pos.CENTER);
+            header.add(aplicacaoDetailLabel, currentCol, 2);
+            currentCol++;
+        }
+        
         // Dias individuais na LINHA 2
-        colIndex = 3;
+        colIndex = currentCol; // Começa após as colunas extras
         weekNumber = 1;
         daysInCurrentWeek = 0;
         weekStartCol = colIndex;
@@ -346,12 +523,40 @@ public class TimelineController extends BaseController {
         pessoaLabel.setAlignment(Pos.CENTER);
         row.add(pessoaLabel, 2, 0);
         
+        int currentCol = 3;
+        
+        // Coluna de Projeto (se visível)
+        if (showProjetoCheckBox.isSelected()) {
+            Label projetoLabel = new Label(item.getProjetoNome() != null ? item.getProjetoNome() : "-");
+            projetoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-background-color: white; -fx-padding: 5;");
+            projetoLabel.setMinWidth(120);
+            projetoLabel.setMaxWidth(120);
+            projetoLabel.setMinHeight(30);
+            projetoLabel.setMaxHeight(30);
+            projetoLabel.setAlignment(Pos.CENTER);
+            row.add(projetoLabel, currentCol, 0);
+            currentCol++;
+        }
+        
+        // Coluna de Aplicação (se visível)
+        if (showAplicacaoCheckBox.isSelected()) {
+            Label aplicacaoLabel = new Label(item.getAplicacaoNome() != null ? item.getAplicacaoNome() : "-");
+            aplicacaoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-background-color: white; -fx-padding: 5;");
+            aplicacaoLabel.setMinWidth(120);
+            aplicacaoLabel.setMaxWidth(120);
+            aplicacaoLabel.setMinHeight(30);
+            aplicacaoLabel.setMaxHeight(30);
+            aplicacaoLabel.setAlignment(Pos.CENTER);
+            row.add(aplicacaoLabel, currentCol, 0);
+            currentCol++;
+        }
+        
         // Calcular dias de alocação
         // Se customDuration >= 0, usar ele; caso contrário, usar duração padrão do item
         int duration = customDuration >= 0 ? customDuration : calculateDurationInDays(item);
         
         // Colunas de dias
-        int colIndex = 3;
+        int colIndex = currentCol;
         int daysAllocated = 0;
         for (int i = 0; i < workingDays.size(); i++) {
             Label dayCell = new Label();
@@ -394,6 +599,58 @@ public class TimelineController extends BaseController {
         double b = Math.min(1.0, color.getBlue() * factor);
         return String.format("#%02X%02X%02X", 
             (int)(r * 255), (int)(g * 255), (int)(b * 255));
+    }
+    
+    private List<TimelineService.TimelineItem> applyFilters(List<TimelineService.TimelineItem> items) {
+        List<TimelineService.TimelineItem> filteredItems = new ArrayList<>();
+        
+        // Obter filtros selecionados
+        boolean showFeatures = showFeaturesCheckBox.isSelected();
+        boolean showHistorias = showHistoriasCheckBox.isSelected();
+        boolean showTarefas = showTarefasCheckBox.isSelected();
+        MembroDTO selectedMembro = membroFilterComboBox.getValue();
+        
+        for (TimelineService.TimelineItem timelineItem : items) {
+            ItemSprintDTO item = timelineItem.getItem();
+            int indentLevel = timelineItem.getIndentLevel();
+            
+            // Filtro por tipo de item
+            boolean typeMatch = false;
+            
+            // Features (nível 0)
+            if (item.getTipo() == TipoItem.FEATURE) {
+                typeMatch = showFeatures;
+            } 
+            // Histórias (nível 1 - filhas de Features)
+            else if (item.getTipo() == TipoItem.HISTORIA) {
+                typeMatch = showHistorias;
+            } 
+            // Tarefas (nível 2 - filhas de Histórias)
+            else if (item.getTipo() == TipoItem.TAREFA) {
+                typeMatch = showTarefas;
+            } 
+            // SUBs (nível 3 - filhas de Tarefas ou Histórias)
+            else if (item.getTipo() == TipoItem.SUB) {
+                // SUBs são exibidas se Histórias ou Tarefas estiverem marcadas
+                typeMatch = showHistorias || showTarefas;
+            }
+            
+            if (!typeMatch) {
+                continue;
+            }
+            
+            // Filtro por membro
+            if (selectedMembro != null) {
+                // Se um membro está selecionado, mostrar apenas itens desse membro
+                if (item.getMembroId() == null || !item.getMembroId().equals(selectedMembro.getId())) {
+                    continue;
+                }
+            }
+            
+            filteredItems.add(timelineItem);
+        }
+        
+        return filteredItems;
     }
     
     @Override
