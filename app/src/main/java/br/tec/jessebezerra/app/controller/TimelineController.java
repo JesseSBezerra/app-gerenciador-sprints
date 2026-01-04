@@ -45,6 +45,9 @@ public class TimelineController extends BaseController {
     private CheckBox showTarefasCheckBox;
     
     @FXML
+    private CheckBox showSubsCheckBox;
+    
+    @FXML
     private CheckBox showProjetoCheckBox;
     
     @FXML
@@ -118,6 +121,7 @@ public class TimelineController extends BaseController {
             boolean showFeatures = showFeaturesCheckBox.isSelected();
             boolean showHistorias = showHistoriasCheckBox.isSelected();
             boolean showTarefas = showTarefasCheckBox.isSelected();
+            boolean showSubs = showSubsCheckBox.isSelected();
             boolean showProjeto = showProjetoCheckBox.isSelected();
             boolean showAplicacao = showAplicacaoCheckBox.isSelected();
             MembroDTO membroFilter = membroFilterComboBox.getValue();
@@ -127,6 +131,7 @@ public class TimelineController extends BaseController {
                 showFeatures, 
                 showHistorias, 
                 showTarefas, 
+                showSubs, 
                 showProjeto, 
                 showAplicacao, 
                 membroFilter
@@ -608,6 +613,7 @@ public class TimelineController extends BaseController {
         boolean showFeatures = showFeaturesCheckBox.isSelected();
         boolean showHistorias = showHistoriasCheckBox.isSelected();
         boolean showTarefas = showTarefasCheckBox.isSelected();
+        boolean showSubs = showSubsCheckBox.isSelected();
         MembroDTO selectedMembro = membroFilterComboBox.getValue();
         
         for (TimelineService.TimelineItem timelineItem : items) {
@@ -631,8 +637,7 @@ public class TimelineController extends BaseController {
             } 
             // SUBs (nível 3 - filhas de Tarefas ou Histórias)
             else if (item.getTipo() == TipoItem.SUB) {
-                // SUBs são exibidas se Histórias ou Tarefas estiverem marcadas
-                typeMatch = showHistorias || showTarefas;
+                typeMatch = showSubs;
             }
             
             if (!typeMatch) {

@@ -33,7 +33,7 @@ public class TimelineExcelService {
     }
     
     public File exportToExcel(SprintDTO sprint, boolean showFeatures, boolean showHistorias, 
-                              boolean showTarefas, boolean showProjeto, boolean showAplicacao,
+                              boolean showTarefas, boolean showSubs, boolean showProjeto, boolean showAplicacao,
                               MembroDTO membroFilter) throws IOException {
         
         Workbook workbook = new XSSFWorkbook();
@@ -46,7 +46,7 @@ public class TimelineExcelService {
         List<TimelineService.TimelineItem> timelineItems = timelineService.buildHierarchicalTimeline(sprint.getId());
         
         // Aplicar filtros
-        timelineItems = applyFilters(timelineItems, showFeatures, showHistorias, showTarefas, membroFilter);
+        timelineItems = applyFilters(timelineItems, showFeatures, showHistorias, showTarefas, showSubs, membroFilter);
         
         // Criar cabeçalho
         int currentRow = 0;
@@ -88,6 +88,7 @@ public class TimelineExcelService {
             boolean showFeatures,
             boolean showHistorias,
             boolean showTarefas,
+            boolean showSubs,
             MembroDTO membroFilter) {
         
         return items.stream().filter(timelineItem -> {
@@ -101,7 +102,7 @@ public class TimelineExcelService {
             } else if (item.getTipo() == TipoItem.TAREFA) {
                 typeMatch = showTarefas;
             } else if (item.getTipo() == TipoItem.SUB) {
-                typeMatch = showHistorias || showTarefas;
+                typeMatch = showSubs;
             }
             
             if (!typeMatch) {
