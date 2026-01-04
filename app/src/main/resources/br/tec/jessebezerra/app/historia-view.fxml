@@ -84,9 +84,19 @@
                          GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"
                          maxWidth="Infinity"/>
                 
-                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+                <Label text="Projeto:" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="projetoComboBox" promptText="Selecione o projeto (opcional)" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Aplicação:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+                <ComboBox fx:id="aplicacaoComboBox" promptText="Selecione a aplicação (opcional)" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="4" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>
                 <TextArea fx:id="descricaoTextArea" promptText="Digite a descrição da história" 
-                         GridPane.columnIndex="1" GridPane.rowIndex="4" GridPane.columnSpan="3" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="5" GridPane.columnSpan="3" 
                          styleClass="form-field" prefRowCount="3" wrapText="true"/>
             </GridPane>
             

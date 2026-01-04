@@ -23,6 +23,10 @@ public class ItemSprintDTO {
     private String membroNome; // Para exibição
     private Long itemPaiId;
     private String itemPaiTitulo; // Para exibição
+    private Long projetoId;
+    private String projetoNome; // Para exibição
+    private Long aplicacaoId;
+    private String aplicacaoNome; // Para exibição
     
     @Override
     public String toString() {
