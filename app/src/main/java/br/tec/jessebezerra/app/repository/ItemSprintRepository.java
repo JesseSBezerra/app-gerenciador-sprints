@@ -13,8 +13,8 @@ import java.util.Optional;
 public class ItemSprintRepository {
 
     public ItemSprint save(ItemSprint item) {
-        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id, prioridade) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -60,6 +60,12 @@ public class ItemSprintRepository {
                 pstmt.setLong(11, item.getAplicacaoId());
             } else {
                 pstmt.setNull(11, Types.INTEGER);
+            }
+            
+            if (item.getPrioridade() != null) {
+                pstmt.setInt(12, item.getPrioridade());
+            } else {
+                pstmt.setNull(12, Types.INTEGER);
             }
             
             pstmt.executeUpdate();
@@ -79,7 +85,7 @@ public class ItemSprintRepository {
 
     public ItemSprint update(ItemSprint item) {
         String sql = "UPDATE item_sprint SET tipo = ?, titulo = ?, descricao = ?, duracao_semanas = ?, duracao_dias = ?, " +
-                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ? WHERE id = ?";
+                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ?, prioridade = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -127,7 +133,13 @@ public class ItemSprintRepository {
                 pstmt.setNull(11, Types.INTEGER);
             }
             
-            pstmt.setLong(12, item.getId());
+            if (item.getPrioridade() != null) {
+                pstmt.setInt(12, item.getPrioridade());
+            } else {
+                pstmt.setNull(12, Types.INTEGER);
+            }
+            
+            pstmt.setLong(13, item.getId());
             
             pstmt.executeUpdate();
             return item;
@@ -307,6 +319,11 @@ public class ItemSprintRepository {
         long aplicacaoId = rs.getLong("aplicacao_id");
         if (!rs.wasNull()) {
             item.setAplicacaoId(aplicacaoId);
+        }
+        
+        int prioridade = rs.getInt("prioridade");
+        if (!rs.wasNull()) {
+            item.setPrioridade(prioridade);
         }
         
         return item;

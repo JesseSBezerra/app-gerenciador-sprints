@@ -20,4 +20,5 @@ public class ItemSprint {
     private Long itemPaiId; // Autorelacionamento
     private Long projetoId;
     private Long aplicacaoId;
+    private Integer prioridade; // Ordem de prioridade (usado para ordenação de SUBs)
 }

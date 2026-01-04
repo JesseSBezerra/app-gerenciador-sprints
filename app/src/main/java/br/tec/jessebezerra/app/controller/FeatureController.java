@@ -369,6 +369,43 @@ public class FeatureController extends BaseController {
         public SimpleStringProperty membroNomeProperty() { return membroNome; }
     }
     
+    /**
+     * Método público para editar um item a partir de um ItemSprintDTO
+     * Usado pela Timeline para abrir o formulário de edição
+     */
+    public void editItem(ItemSprintDTO item) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+        
+        // Armazenar ID para edição
+        editingId = item.getId();
+        
+        // Preencher formulário com dados do item
+        tituloField.setText(item.getTitulo());
+        descricaoTextArea.setText(item.getDescricao() != null ? item.getDescricao() : "");
+        duracaoSpinner.getValueFactory().setValue(item.getDuracaoSemanas() != null ? item.getDuracaoSemanas() : 2);
+        statusComboBox.setValue(item.getStatus());
+        
+        // Selecionar Sprint
+        if (item.getSprintId() != null) {
+            sprintComboBox.getItems().stream()
+                .filter(s -> s.getId().equals(item.getSprintId()))
+                .findFirst()
+                .ifPresent(sprintComboBox::setValue);
+        }
+        
+        // Selecionar Membro
+        if (item.getMembroId() != null) {
+            membroComboBox.getItems().stream()
+                .filter(m -> m.getId().equals(item.getMembroId()))
+                .findFirst()
+                .ifPresent(membroComboBox::setValue);
+        }
+        
+        salvarButton.setText("Atualizar");
+    }
+    
     @Override
     protected javafx.stage.Stage getCurrentStage() {
         return (javafx.stage.Stage) featureTable.getScene().getWindow();

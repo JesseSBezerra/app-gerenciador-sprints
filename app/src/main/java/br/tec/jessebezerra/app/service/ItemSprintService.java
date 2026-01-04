@@ -299,6 +299,7 @@ public class ItemSprintService {
         item.setItemPaiId(dto.getItemPaiId());
         item.setProjetoId(dto.getProjetoId());
         item.setAplicacaoId(dto.getAplicacaoId());
+        item.setPrioridade(dto.getPrioridade());
         return item;
     }
 
@@ -316,6 +317,7 @@ public class ItemSprintService {
         dto.setItemPaiId(item.getItemPaiId());
         dto.setProjetoId(item.getProjetoId());
         dto.setAplicacaoId(item.getAplicacaoId());
+        dto.setPrioridade(item.getPrioridade());
         
         // Buscar nomes para exibição
         if (item.getSprintId() != null) {

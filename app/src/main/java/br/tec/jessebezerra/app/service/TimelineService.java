@@ -66,11 +66,20 @@ public class TimelineService {
             for (ItemSprintDTO child : children) {
                 timelineItems.add(new TimelineItem(child, 1, child.getTipo().name()));
                 
-                // Buscar SUBs (nível 2)
+                // Buscar SUBs (nível 2) - ordenar por prioridade
                 List<ItemSprintDTO> subs = allItems.stream()
                     .filter(item -> child.getId().equals(item.getItemPaiId()))
                     .filter(item -> item.getTipo() == TipoItem.SUB)
-                    .sorted(Comparator.comparing(ItemSprintDTO::getId))
+                    .sorted((a, b) -> {
+                        // Ordenar por prioridade, se não houver prioridade usar ID
+                        Integer prioA = a.getPrioridade() != null ? a.getPrioridade() : Integer.MAX_VALUE;
+                        Integer prioB = b.getPrioridade() != null ? b.getPrioridade() : Integer.MAX_VALUE;
+                        int cmp = prioA.compareTo(prioB);
+                        if (cmp == 0) {
+                            return a.getId().compareTo(b.getId());
+                        }
+                        return cmp;
+                    })
                     .collect(Collectors.toList());
                 
                 for (ItemSprintDTO sub : subs) {
