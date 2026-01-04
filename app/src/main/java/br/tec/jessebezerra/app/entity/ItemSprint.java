@@ -18,4 +18,6 @@ public class ItemSprint {
     private Long sprintId;
     private Long membroId;
     private Long itemPaiId; // Autorelacionamento
+    private Long projetoId;
+    private Long aplicacaoId;
 }

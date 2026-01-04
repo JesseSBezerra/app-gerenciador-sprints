@@ -1,9 +1,11 @@
 package br.tec.jessebezerra.app.controller;
 
 import br.tec.jessebezerra.app.dto.ItemSprintDTO;
+import br.tec.jessebezerra.app.dto.MembroDTO;
 import br.tec.jessebezerra.app.dto.SprintDTO;
 import br.tec.jessebezerra.app.entity.TipoItem;
 import br.tec.jessebezerra.app.service.ItemSprintService;
+import br.tec.jessebezerra.app.service.MembroService;
 import br.tec.jessebezerra.app.service.SprintService;
 import br.tec.jessebezerra.app.service.TimelineService;
 import javafx.collections.FXCollections;
@@ -32,8 +34,21 @@ public class TimelineController extends BaseController {
     @FXML
     private VBox timelineContainer;
     
+    @FXML
+    private CheckBox showFeaturesCheckBox;
+    
+    @FXML
+    private CheckBox showHistoriasCheckBox;
+    
+    @FXML
+    private CheckBox showTarefasCheckBox;
+    
+    @FXML
+    private ComboBox<MembroDTO> membroFilterComboBox;
+    
     private SprintService sprintService;
     private TimelineService timelineService;
+    private MembroService membroService;
     
     private boolean menuExpanded = true;
     private SprintDTO selectedSprint;
@@ -47,11 +62,34 @@ public class TimelineController extends BaseController {
     public TimelineController() {
         this.sprintService = new SprintService();
         this.timelineService = new TimelineService();
+        this.membroService = new MembroService();
         this.workingDays = new ArrayList<>();
     }
 
     @FXML
     public void initialize() {
+        loadMembros();
+        loadAndBuildTimeline();
+    }
+    
+    private void loadMembros() {
+        List<MembroDTO> membros = membroService.findAll();
+        membroFilterComboBox.setItems(FXCollections.observableArrayList(membros));
+    }
+    
+    @FXML
+    protected void onFilterChanged() {
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onClearMembroFilter() {
+        membroFilterComboBox.setValue(null);
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onRefreshTimeline() {
         loadAndBuildTimeline();
     }
 
@@ -93,6 +131,9 @@ public class TimelineController extends BaseController {
         // Buscar itens organizados hierarquicamente
         List<TimelineService.TimelineItem> timelineItems = timelineService.buildHierarchicalTimeline(selectedSprint.getId());
         
+        // Aplicar filtros
+        timelineItems = applyFilters(timelineItems);
+        
         // Buscar todos os itens para cálculos
         List<ItemSprintDTO> allItems = new ArrayList<>();
         for (TimelineService.TimelineItem ti : timelineItems) {
@@ -103,7 +144,7 @@ public class TimelineController extends BaseController {
         Map<Long, Integer> memberAllocations = new HashMap<>();
         
         int colorIndex = 0;
-        String currentFeatureColor = null;
+        String currentFeatureColor = COLORS[0]; // Cor padrão inicial
         
         for (TimelineService.TimelineItem timelineItem : timelineItems) {
             ItemSprintDTO item = timelineItem.getItem();
@@ -113,12 +154,15 @@ public class TimelineController extends BaseController {
             // Definir cor baseada no nível
             String rowColor;
             if (indentLevel == 0) {
+                // Feature - atribuir nova cor
                 currentFeatureColor = COLORS[colorIndex % COLORS.length];
                 colorIndex++;
                 rowColor = currentFeatureColor;
             } else if (indentLevel == 1) {
+                // História - usar cor da Feature pai (ou cor padrão se Feature foi filtrada)
                 rowColor = adjustBrightness(currentFeatureColor, 0.9);
             } else {
+                // Tarefa/SUB - usar cor da Feature pai (ou cor padrão se Feature foi filtrada)
                 rowColor = adjustBrightness(currentFeatureColor, 0.8);
             }
             
@@ -394,6 +438,58 @@ public class TimelineController extends BaseController {
         double b = Math.min(1.0, color.getBlue() * factor);
         return String.format("#%02X%02X%02X", 
             (int)(r * 255), (int)(g * 255), (int)(b * 255));
+    }
+    
+    private List<TimelineService.TimelineItem> applyFilters(List<TimelineService.TimelineItem> items) {
+        List<TimelineService.TimelineItem> filteredItems = new ArrayList<>();
+        
+        // Obter filtros selecionados
+        boolean showFeatures = showFeaturesCheckBox.isSelected();
+        boolean showHistorias = showHistoriasCheckBox.isSelected();
+        boolean showTarefas = showTarefasCheckBox.isSelected();
+        MembroDTO selectedMembro = membroFilterComboBox.getValue();
+        
+        for (TimelineService.TimelineItem timelineItem : items) {
+            ItemSprintDTO item = timelineItem.getItem();
+            int indentLevel = timelineItem.getIndentLevel();
+            
+            // Filtro por tipo de item
+            boolean typeMatch = false;
+            
+            // Features (nível 0)
+            if (item.getTipo() == TipoItem.FEATURE) {
+                typeMatch = showFeatures;
+            } 
+            // Histórias (nível 1 - filhas de Features)
+            else if (item.getTipo() == TipoItem.HISTORIA) {
+                typeMatch = showHistorias;
+            } 
+            // Tarefas (nível 2 - filhas de Histórias)
+            else if (item.getTipo() == TipoItem.TAREFA) {
+                typeMatch = showTarefas;
+            } 
+            // SUBs (nível 3 - filhas de Tarefas ou Histórias)
+            else if (item.getTipo() == TipoItem.SUB) {
+                // SUBs são exibidas se Histórias ou Tarefas estiverem marcadas
+                typeMatch = showHistorias || showTarefas;
+            }
+            
+            if (!typeMatch) {
+                continue;
+            }
+            
+            // Filtro por membro
+            if (selectedMembro != null) {
+                // Se um membro está selecionado, mostrar apenas itens desse membro
+                if (item.getMembroId() == null || !item.getMembroId().equals(selectedMembro.getId())) {
+                    continue;
+                }
+            }
+            
+            filteredItems.add(timelineItem);
+        }
+        
+        return filteredItems;
     }
     
     @Override

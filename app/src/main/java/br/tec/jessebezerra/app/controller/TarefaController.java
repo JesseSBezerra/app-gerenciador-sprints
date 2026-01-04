@@ -1,12 +1,16 @@
 package br.tec.jessebezerra.app.controller;
 
+import br.tec.jessebezerra.app.dto.AplicacaoDTO;
 import br.tec.jessebezerra.app.dto.ItemSprintDTO;
 import br.tec.jessebezerra.app.dto.MembroDTO;
+import br.tec.jessebezerra.app.dto.ProjetoDTO;
 import br.tec.jessebezerra.app.dto.SprintDTO;
 import br.tec.jessebezerra.app.entity.StatusItem;
 import br.tec.jessebezerra.app.entity.TipoItem;
+import br.tec.jessebezerra.app.service.AplicacaoService;
 import br.tec.jessebezerra.app.service.ItemSprintService;
 import br.tec.jessebezerra.app.service.MembroService;
+import br.tec.jessebezerra.app.service.ProjetoService;
 import br.tec.jessebezerra.app.service.SprintService;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -27,6 +31,8 @@ public class TarefaController extends BaseController {
     @FXML private ComboBox<SprintDTO> sprintComboBox;
     @FXML private ComboBox<MembroDTO> membroComboBox;
     @FXML private ComboBox<ItemSprintDTO> featureComboBox;
+    @FXML private ComboBox<ProjetoDTO> projetoComboBox;
+    @FXML private ComboBox<AplicacaoDTO> aplicacaoComboBox;
     
     @FXML private TableView<TarefaTableModel> tarefaTable;
     @FXML private TableColumn<TarefaTableModel, Long> idColumn;
@@ -47,6 +53,8 @@ public class TarefaController extends BaseController {
     private final ItemSprintService service;
     private final SprintService sprintService;
     private final MembroService membroService;
+    private final ProjetoService projetoService;
+    private final AplicacaoService aplicacaoService;
     private boolean menuExpanded = true;
     private final ObservableList<TarefaTableModel> tarefaList;
     private Long editingId;
@@ -55,6 +63,8 @@ public class TarefaController extends BaseController {
         this.service = new ItemSprintService();
         this.sprintService = new SprintService();
         this.membroService = new MembroService();
+        this.projetoService = new ProjetoService();
+        this.aplicacaoService = new AplicacaoService();
         this.tarefaList = FXCollections.observableArrayList();
     }
 
@@ -70,6 +80,8 @@ public class TarefaController extends BaseController {
         loadSprints();
         loadMembros();
         loadFeatures();
+        loadProjetos();
+        loadAplicacoes();
         
         sprintComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
@@ -123,6 +135,14 @@ public class TarefaController extends BaseController {
             dto.setItemPaiId(featureComboBox.getValue().getId());
         }
         
+        if (projetoComboBox.getValue() != null) {
+            dto.setProjetoId(projetoComboBox.getValue().getId());
+        }
+        
+        if (aplicacaoComboBox.getValue() != null) {
+            dto.setAplicacaoId(aplicacaoComboBox.getValue().getId());
+        }
+        
         try {
             if (editingId == null) {
                 service.create(dto);
@@ -172,6 +192,20 @@ public class TarefaController extends BaseController {
                     .filter(m -> m.getId().equals(selected.getMembroId()))
                     .findFirst()
                     .ifPresent(membroComboBox::setValue);
+            }
+            
+            if (selected.getProjetoId() != null) {
+                projetoComboBox.getItems().stream()
+                    .filter(p -> p.getId().equals(selected.getProjetoId()))
+                    .findFirst()
+                    .ifPresent(projetoComboBox::setValue);
+            }
+            
+            if (selected.getAplicacaoId() != null) {
+                aplicacaoComboBox.getItems().stream()
+                    .filter(a -> a.getId().equals(selected.getAplicacaoId()))
+                    .findFirst()
+                    .ifPresent(aplicacaoComboBox::setValue);
             }
             
             salvarButton.setText("Atualizar");
@@ -262,6 +296,16 @@ public class TarefaController extends BaseController {
             .toList();
         featureComboBox.setItems(FXCollections.observableArrayList(features));
     }
+    
+    private void loadProjetos() {
+        List<ProjetoDTO> projetos = projetoService.findAll();
+        projetoComboBox.setItems(FXCollections.observableArrayList(projetos));
+    }
+    
+    private void loadAplicacoes() {
+        List<AplicacaoDTO> aplicacoes = aplicacaoService.findAll();
+        aplicacaoComboBox.setItems(FXCollections.observableArrayList(aplicacoes));
+    }
 
     private void loadTarefas() {
         List<ItemSprintDTO> tarefas = service.findAll().stream()
@@ -281,7 +325,11 @@ public class TarefaController extends BaseController {
                 dto.getItemPaiId(),
                 dto.getItemPaiTitulo(),
                 dto.getMembroId(),
-                dto.getMembroNome()
+                dto.getMembroNome(),
+                dto.getProjetoId(),
+                dto.getProjetoNome(),
+                dto.getAplicacaoId(),
+                dto.getAplicacaoNome()
             );
             tarefaList.add(model);
         });
@@ -298,6 +346,8 @@ public class TarefaController extends BaseController {
         sprintComboBox.setValue(null);
         featureComboBox.setValue(null);
         membroComboBox.setValue(null);
+        projetoComboBox.setValue(null);
+        aplicacaoComboBox.setValue(null);
         salvarButton.setText("Salvar");
         tarefaTable.getSelectionModel().clearSelection();
     }
@@ -370,11 +420,17 @@ public class TarefaController extends BaseController {
         private final SimpleStringProperty featureTitulo;
         private final SimpleObjectProperty<Long> membroId;
         private final SimpleStringProperty membroNome;
+        private final SimpleObjectProperty<Long> projetoId;
+        private final SimpleStringProperty projetoNome;
+        private final SimpleObjectProperty<Long> aplicacaoId;
+        private final SimpleStringProperty aplicacaoNome;
 
         public TarefaTableModel(Long id, String titulo, String descricao, Integer duracaoSemanas,
                                StatusItem status, Long sprintId, String sprintNome,
                                Long featureId, String featureTitulo,
-                               Long membroId, String membroNome) {
+                               Long membroId, String membroNome,
+                               Long projetoId, String projetoNome,
+                               Long aplicacaoId, String aplicacaoNome) {
             this.id = new SimpleLongProperty(id);
             this.titulo = new SimpleStringProperty(titulo);
             this.descricao = new SimpleStringProperty(descricao);
@@ -386,6 +442,10 @@ public class TarefaController extends BaseController {
             this.featureTitulo = new SimpleStringProperty(featureTitulo);
             this.membroId = new SimpleObjectProperty<>(membroId);
             this.membroNome = new SimpleStringProperty(membroNome);
+            this.projetoId = new SimpleObjectProperty<>(projetoId);
+            this.projetoNome = new SimpleStringProperty(projetoNome);
+            this.aplicacaoId = new SimpleObjectProperty<>(aplicacaoId);
+            this.aplicacaoNome = new SimpleStringProperty(aplicacaoNome);
         }
 
         public long getId() { return id.get(); }
@@ -416,6 +476,16 @@ public class TarefaController extends BaseController {
         
         public String getMembroNome() { return membroNome.get(); }
         public SimpleStringProperty membroNomeProperty() { return membroNome; }
+        
+        public Long getProjetoId() { return projetoId.get(); }
+        
+        public String getProjetoNome() { return projetoNome.get(); }
+        public SimpleStringProperty projetoNomeProperty() { return projetoNome; }
+        
+        public Long getAplicacaoId() { return aplicacaoId.get(); }
+        
+        public String getAplicacaoNome() { return aplicacaoNome.get(); }
+        public SimpleStringProperty aplicacaoNomeProperty() { return aplicacaoNome; }
     }
     
     @Override

@@ -13,8 +13,8 @@ import java.util.Optional;
 public class ItemSprintRepository {
 
     public ItemSprint save(ItemSprint item) {
-        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -48,6 +48,18 @@ public class ItemSprintRepository {
                 pstmt.setLong(9, item.getItemPaiId());
             } else {
                 pstmt.setNull(9, Types.INTEGER);
+            }
+            
+            if (item.getProjetoId() != null) {
+                pstmt.setLong(10, item.getProjetoId());
+            } else {
+                pstmt.setNull(10, Types.INTEGER);
+            }
+            
+            if (item.getAplicacaoId() != null) {
+                pstmt.setLong(11, item.getAplicacaoId());
+            } else {
+                pstmt.setNull(11, Types.INTEGER);
             }
             
             pstmt.executeUpdate();
@@ -67,7 +79,7 @@ public class ItemSprintRepository {
 
     public ItemSprint update(ItemSprint item) {
         String sql = "UPDATE item_sprint SET tipo = ?, titulo = ?, descricao = ?, duracao_semanas = ?, duracao_dias = ?, " +
-                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ? WHERE id = ?";
+                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -103,7 +115,19 @@ public class ItemSprintRepository {
                 pstmt.setNull(9, Types.INTEGER);
             }
             
-            pstmt.setLong(10, item.getId());
+            if (item.getProjetoId() != null) {
+                pstmt.setLong(10, item.getProjetoId());
+            } else {
+                pstmt.setNull(10, Types.INTEGER);
+            }
+            
+            if (item.getAplicacaoId() != null) {
+                pstmt.setLong(11, item.getAplicacaoId());
+            } else {
+                pstmt.setNull(11, Types.INTEGER);
+            }
+            
+            pstmt.setLong(12, item.getId());
             
             pstmt.executeUpdate();
             return item;
@@ -273,6 +297,16 @@ public class ItemSprintRepository {
         long itemPaiId = rs.getLong("item_pai_id");
         if (!rs.wasNull()) {
             item.setItemPaiId(itemPaiId);
+        }
+        
+        long projetoId = rs.getLong("projeto_id");
+        if (!rs.wasNull()) {
+            item.setProjetoId(projetoId);
+        }
+        
+        long aplicacaoId = rs.getLong("aplicacao_id");
+        if (!rs.wasNull()) {
+            item.setAplicacaoId(aplicacaoId);
         }
         
         return item;

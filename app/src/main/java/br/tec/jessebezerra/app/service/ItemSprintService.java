@@ -4,8 +4,10 @@ import br.tec.jessebezerra.app.dto.ItemSprintDTO;
 import br.tec.jessebezerra.app.dto.MembroDTO;
 import br.tec.jessebezerra.app.dto.SprintDTO;
 import br.tec.jessebezerra.app.entity.ItemSprint;
+import br.tec.jessebezerra.app.repository.AplicacaoRepository;
 import br.tec.jessebezerra.app.repository.ItemSprintRepository;
 import br.tec.jessebezerra.app.repository.MembroRepository;
+import br.tec.jessebezerra.app.repository.ProjetoRepository;
 import br.tec.jessebezerra.app.repository.SprintRepository;
 
 import java.time.LocalDate;
@@ -18,11 +20,15 @@ public class ItemSprintService {
     private final ItemSprintRepository repository;
     private final SprintRepository sprintRepository;
     private final MembroRepository membroRepository;
+    private final ProjetoRepository projetoRepository;
+    private final AplicacaoRepository aplicacaoRepository;
 
     public ItemSprintService() {
         this.repository = new ItemSprintRepository();
         this.sprintRepository = new SprintRepository();
         this.membroRepository = new MembroRepository();
+        this.projetoRepository = new ProjetoRepository();
+        this.aplicacaoRepository = new AplicacaoRepository();
     }
 
     public ItemSprintDTO create(ItemSprintDTO dto) {
@@ -291,6 +297,8 @@ public class ItemSprintService {
         item.setSprintId(dto.getSprintId());
         item.setMembroId(dto.getMembroId());
         item.setItemPaiId(dto.getItemPaiId());
+        item.setProjetoId(dto.getProjetoId());
+        item.setAplicacaoId(dto.getAplicacaoId());
         return item;
     }
 
@@ -306,6 +314,8 @@ public class ItemSprintService {
         dto.setSprintId(item.getSprintId());
         dto.setMembroId(item.getMembroId());
         dto.setItemPaiId(item.getItemPaiId());
+        dto.setProjetoId(item.getProjetoId());
+        dto.setAplicacaoId(item.getAplicacaoId());
         
         // Buscar nomes para exibição
         if (item.getSprintId() != null) {
@@ -321,6 +331,16 @@ public class ItemSprintService {
         if (item.getItemPaiId() != null) {
             repository.findById(item.getItemPaiId())
                 .ifPresent(itemPai -> dto.setItemPaiTitulo(itemPai.getTitulo()));
+        }
+        
+        if (item.getProjetoId() != null) {
+            projetoRepository.findById(item.getProjetoId())
+                .ifPresent(projeto -> dto.setProjetoNome(projeto.getNome()));
+        }
+        
+        if (item.getAplicacaoId() != null) {
+            aplicacaoRepository.findById(item.getAplicacaoId())
+                .ifPresent(aplicacao -> dto.setAplicacaoNome(aplicacao.getNome()));
         }
         
         return dto;
