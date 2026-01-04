@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="br.tec.jessebezerra.app.controller.MembroController"
+            stylesheets="@styles/sprint-styles.css"
+            styleClass="root-pane">
+    
+    <top>
+        <HBox styleClass="header-section" alignment="CENTER_LEFT" spacing="16">
+            <Button fx:id="menuToggleButton" text="☰" onAction="#onMenuToggle" styleClass="menu-toggle-btn"/>
+            <Label text="Gerenciamento de Equipe" styleClass="header-title"/>
+        </HBox>
+    </top>
+    
+    <left>
+        <VBox fx:id="sideMenu" styleClass="side-menu" prefWidth="220" minWidth="220" maxWidth="220">
+            <Label text="MENU" styleClass="menu-header"/>
+            <Separator styleClass="menu-separator"/>
+            
+            <VBox styleClass="menu-items" spacing="4">
+                <Button text="📊 Sprints" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToSprints"/>
+                <Button text="👥 Membros" styleClass="menu-item active" maxWidth="Infinity"/>
+                <Button text="📁 Projetos" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToProjetos"/>
+                <Button text="💻 Aplicações" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToAplicacoes"/>
+                <Button text="🎯 Features" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToFeatures"/>
+                <Button text="📖 Histórias" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToHistorias"/>
+                <Button text="✓ Tarefas" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToTarefas"/>
+                <Button text="📅 Timeline" styleClass="menu-item" maxWidth="Infinity" onAction="#navigateToTimeline"/>
+            </VBox>
+            
+            <Region VBox.vgrow="ALWAYS"/>
+            
+            <VBox styleClass="menu-footer">
+                <Separator styleClass="menu-separator"/>
+                <Label text="v1.0.0" styleClass="menu-version"/>
+            </VBox>
+        </VBox>
+    </left>
+    
+    <center>
+        <VBox spacing="20" styleClass="content-section">
+            <VBox.margin>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </VBox.margin>
+            
+            <GridPane hgap="15" vgap="15" styleClass="form-grid">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="25" minWidth="150"/>
+                    <ColumnConstraints percentWidth="75" hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Nome:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label"/>
+                <TextField fx:id="nomeField" promptText="Digite o nome do membro" 
+                          GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-field"/>
+                
+                <Label text="Função:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <ComboBox fx:id="funcaoComboBox" promptText="Selecione a função" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Ativo:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                <CheckBox fx:id="ativoCheckBox" text="Membro ativo na equipe" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                
+                <Label text="Especialidades:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+                <TextArea fx:id="especialidadesTextArea" promptText="Digite as especialidades (ex: Java, Spring, React...)" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"
+                         prefRowCount="3" wrapText="true"/>
+            </GridPane>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="button-bar">
+                <Button fx:id="salvarButton" text="Salvar" onAction="#onSalvarClick" styleClass="btn-primary"/>
+                <Button fx:id="limparButton" text="Limpar" onAction="#onLimparClick" styleClass="btn-secondary"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="editarButton" text="Editar" onAction="#onEditarClick" styleClass="btn-warning" disable="true"/>
+                <Button fx:id="excluirButton" text="Excluir" onAction="#onExcluirClick" styleClass="btn-danger" disable="true"/>
+            </HBox>
+            
+            <VBox VBox.vgrow="ALWAYS" styleClass="table-container">
+                <Label text="Membros Cadastrados" styleClass="section-title"/>
+                <TableView fx:id="membroTable" VBox.vgrow="ALWAYS" styleClass="sprint-table">
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="ID" prefWidth="60" styleClass="table-column"/>
+                        <TableColumn fx:id="nomeColumn" text="Nome" prefWidth="200" styleClass="table-column"/>
+                        <TableColumn fx:id="funcaoColumn" text="Função" prefWidth="120" styleClass="table-column"/>
+                        <TableColumn fx:id="ativoColumn" text="Ativo" prefWidth="80" styleClass="table-column"/>
+                        <TableColumn fx:id="especialidadesColumn" text="Especialidades" prefWidth="250" styleClass="table-column"/>
+                    </columns>
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                </TableView>
+            </VBox>
+        </VBox>
+    </center>
+    
+    <bottom>
+        <HBox styleClass="footer-section" alignment="CENTER">
+            <Label text="Sistema de Gerenciamento de Sprints - v1.0" styleClass="footer-text"/>
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -1,0 +1,21 @@
+package br.tec.jessebezerra.app.entity;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ItemSprint {
+    private Long id;
+    private TipoItem tipo;
+    private String titulo;
+    private String descricao;
+    private Integer duracaoSemanas; // Para Feature, História, Tarefa
+    private Integer duracaoDias; // Para SUB
+    private StatusItem status;
+    private Long sprintId;
+    private Long membroId;
+    private Long itemPaiId; // Autorelacionamento
+}

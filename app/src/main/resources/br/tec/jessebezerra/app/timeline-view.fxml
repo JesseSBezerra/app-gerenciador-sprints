@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="br.tec.jessebezerra.app.controller.TimelineController"
+            stylesheets="@styles/sprint-styles.css"
+            styleClass="root-pane">
+    
+    <top>
+        <HBox styleClass="header-section" alignment="CENTER_LEFT" spacing="16">
+            <Button fx:id="menuToggleButton" text="☰" onAction="#onMenuToggle" styleClass="menu-toggle-btn"/>
+            <Label text="Timeline da Sprint" styleClass="header-title"/>
+        </HBox>
+    </top>
+    
+    <left>
+        <VBox fx:id="sideMenu" styleClass="side-menu" prefWidth="220" minWidth="220" maxWidth="220">
+            <Label text="MENU" styleClass="menu-header"/>
+            <Separator styleClass="menu-separator"/>
+            
+            <VBox styleClass="menu-items" spacing="4">
+                <Button text="📊 Sprints" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToSprints"/>
+                <Button text="👥 Membros" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToMembros"/>
+                <Button text="📁 Projetos" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToProjetos"/>
+                <Button text="💻 Aplicações" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToAplicacoes"/>
+                <Button text="🎯 Features" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToFeatures"/>
+                <Button text="📖 Histórias" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToHistorias"/>
+                <Button text="✓ Tarefas" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToTarefas"/>
+                <Button text="📅 Timeline" styleClass="menu-item active" maxWidth="Infinity"/>
+            </VBox>
+            
+            <Region VBox.vgrow="ALWAYS"/>
+            
+            <VBox styleClass="menu-footer">
+                <Separator styleClass="menu-separator"/>
+                <Label text="v1.0.0" styleClass="menu-version"/>
+            </VBox>
+        </VBox>
+    </left>
+    
+    <center>
+        <VBox spacing="20" styleClass="content-section">
+            <VBox.margin>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </VBox.margin>
+            
+            <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS" styleClass="sprint-table">
+                <VBox fx:id="timelineContainer" spacing="0"/>
+            </ScrollPane>
+        </VBox>
+    </center>
+    
+    <bottom>
+        <HBox styleClass="footer-section" alignment="CENTER">
+            <Label text="Sistema de Gerenciamento de Sprints - Timeline - v1.0" styleClass="footer-text"/>
+        </HBox>
+    </bottom>
+</BorderPane>

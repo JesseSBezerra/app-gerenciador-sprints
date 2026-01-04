@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="br.tec.jessebezerra.app.controller.ItemSprintController"
+            stylesheets="@styles/sprint-styles.css"
+            styleClass="root-pane">
+    
+    <top>
+        <HBox styleClass="header-section" alignment="CENTER_LEFT" spacing="16">
+            <Button fx:id="menuToggleButton" text="☰" onAction="#onMenuToggle" styleClass="menu-toggle-btn"/>
+            <Label text="Gerenciamento de Itens da Sprint" styleClass="header-title"/>
+        </HBox>
+    </top>
+    
+    <left>
+        <VBox fx:id="sideMenu" styleClass="side-menu" prefWidth="220" minWidth="220" maxWidth="220">
+            <Label text="MENU" styleClass="menu-header"/>
+            <Separator styleClass="menu-separator"/>
+            
+            <VBox styleClass="menu-items" spacing="4">
+                <Button text="📊 Sprints" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToSprints"/>
+                <Button text="👥 Membros" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToMembros"/>
+                <Button text="📁 Projetos" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToProjetos"/>
+                <Button text="💻 Aplicações" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToAplicacoes"/>
+                <Button text="🎯 Features" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToFeatures"/>
+                <Button text="📖 Histórias" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToHistorias"/>
+                <Button text="✓ Tarefas" styleClass="menu-item" maxWidth="Infinity" onAction="#onNavigateToTarefas"/>
+                <Button text="📅 Timeline" styleClass="menu-item" maxWidth="Infinity" onAction="#navigateToTimeline"/>
+            </VBox>
+            
+            <Region VBox.vgrow="ALWAYS"/>
+            
+            <VBox styleClass="menu-footer">
+                <Separator styleClass="menu-separator"/>
+                <Label text="v1.0.0" styleClass="menu-version"/>
+            </VBox>
+        </VBox>
+    </left>
+    
+    <center>
+        <VBox spacing="20" styleClass="content-section">
+            <VBox.margin>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </VBox.margin>
+            
+            <GridPane hgap="15" vgap="15" styleClass="form-grid">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="20" minWidth="120"/>
+                    <ColumnConstraints percentWidth="30" hgrow="ALWAYS"/>
+                    <ColumnConstraints percentWidth="20" minWidth="120"/>
+                    <ColumnConstraints percentWidth="30" hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Tipo:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label"/>
+                <ComboBox fx:id="tipoComboBox" promptText="Selecione o tipo" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Status:" GridPane.columnIndex="2" GridPane.rowIndex="0" styleClass="form-label"/>
+                <ComboBox fx:id="statusComboBox" promptText="Selecione o status" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="0" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Título:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <TextField fx:id="tituloField" promptText="Digite o título do item" 
+                          GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.columnSpan="3" 
+                          styleClass="form-field"/>
+                
+                <Label text="Sprint:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                <ComboBox fx:id="sprintComboBox" promptText="Selecione a sprint" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Duração (dias):" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="form-label"/>
+                <Spinner fx:id="duracaoSpinner" GridPane.columnIndex="3" GridPane.rowIndex="2" 
+                        styleClass="form-field" maxWidth="Infinity" editable="true"/>
+                
+                <Label text="Membro:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="membroComboBox" promptText="Selecione o membro (opcional)" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Item Pai:" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="itemPaiComboBox" promptText="Selecione o item pai (opcional)" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+                <TextArea fx:id="descricaoTextArea" promptText="Digite a descrição do item" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="4" GridPane.columnSpan="3" 
+                         styleClass="form-field" prefRowCount="3" wrapText="true"/>
+            </GridPane>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="button-bar">
+                <Button fx:id="salvarButton" text="Salvar" onAction="#onSalvarClick" styleClass="btn-primary"/>
+                <Button fx:id="limparButton" text="Limpar" onAction="#onLimparClick" styleClass="btn-secondary"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="editarButton" text="Editar" onAction="#onEditarClick" styleClass="btn-warning" disable="true"/>
+                <Button fx:id="excluirButton" text="Excluir" onAction="#onExcluirClick" styleClass="btn-danger" disable="true"/>
+            </HBox>
+            
+            <VBox VBox.vgrow="ALWAYS" styleClass="table-container">
+                <Label text="Itens Cadastrados" styleClass="section-title"/>
+                <TableView fx:id="itemTable" VBox.vgrow="ALWAYS" styleClass="sprint-table">
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="ID" prefWidth="50" styleClass="table-column"/>
+                        <TableColumn fx:id="tipoColumn" text="Tipo" prefWidth="100" styleClass="table-column"/>
+                        <TableColumn fx:id="tituloColumn" text="Título" prefWidth="250" styleClass="table-column"/>
+                        <TableColumn fx:id="duracaoColumn" text="Duração" prefWidth="80" styleClass="table-column"/>
+                        <TableColumn fx:id="statusColumn" text="Status" prefWidth="120" styleClass="table-column"/>
+                        <TableColumn fx:id="sprintColumn" text="Sprint" prefWidth="150" styleClass="table-column"/>
+                        <TableColumn fx:id="membroColumn" text="Membro" prefWidth="150" styleClass="table-column"/>
+                    </columns>
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                </TableView>
+            </VBox>
+        </VBox>
+    </center>
+    
+    <bottom>
+        <HBox styleClass="footer-section" alignment="CENTER">
+            <Label text="Sistema de Gerenciamento de Sprints - v1.0" styleClass="footer-text"/>
+        </HBox>
+    </bottom>
+</BorderPane>
