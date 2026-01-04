@@ -79,6 +79,16 @@
                     </HBox>
                 </VBox>
                 
+                <Separator orientation="VERTICAL" prefHeight="50"/>
+                
+                <VBox spacing="8">
+                    <Label text="Filtrar por Sprint:" styleClass="filter-label" style="-fx-font-weight: bold;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <ComboBox fx:id="sprintFilterComboBox" promptText="Todas as Sprints" prefWidth="200" onAction="#onFilterChanged"/>
+                        <Button text="Limpar" onAction="#onClearSprintFilter" styleClass="secondary-button"/>
+                    </HBox>
+                </VBox>
+                
                 <Region HBox.hgrow="ALWAYS"/>
                 
                 <Button text="📊 Excel" onAction="#onExportToExcel" styleClass="primary-button" style="-fx-background-color: #28a745;"/>
