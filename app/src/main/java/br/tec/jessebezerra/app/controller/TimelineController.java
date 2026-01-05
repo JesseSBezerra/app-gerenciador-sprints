@@ -209,8 +209,8 @@ public class TimelineController extends BaseController {
     
     @FXML
     protected void onExportToExcel() {
-        if (selectedSprint == null) {
-            showErrorAlert("Erro", "Nenhuma sprint selecionada para exportar.");
+        if (allSprints == null || allSprints.isEmpty()) {
+            showErrorAlert("Erro", "Nenhuma sprint disponível para exportar.");
             return;
         }
         
@@ -224,7 +224,7 @@ public class TimelineController extends BaseController {
             MembroDTO membroFilter = membroFilterComboBox.getValue();
             
             java.io.File excelFile = excelService.exportToExcel(
-                selectedSprint, 
+                allSprints, 
                 showFeatures, 
                 showHistorias, 
                 showTarefas, 
