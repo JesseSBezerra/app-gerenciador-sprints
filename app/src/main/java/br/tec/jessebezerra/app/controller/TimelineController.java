@@ -61,6 +61,9 @@ public class TimelineController extends BaseController {
     @FXML
     private ComboBox<MembroDTO> membroFilterComboBox;
     
+    @FXML
+    private ComboBox<SprintDTO> sprintFilterComboBox;
+    
     private SprintService sprintService;
     private TimelineService timelineService;
     private MembroService membroService;
@@ -70,6 +73,8 @@ public class TimelineController extends BaseController {
     private boolean menuExpanded = true;
     private SprintDTO selectedSprint;
     private List<LocalDate> workingDays;
+    private List<SprintDTO> allSprints;
+    private Map<Long, List<LocalDate>> workingDaysBySprint;
     
     private static final String[] COLORS = {
         "#FFB6C1", "#FFD700", "#98FB98", "#87CEEB", "#DDA0DD",
@@ -83,17 +88,96 @@ public class TimelineController extends BaseController {
         this.excelService = new TimelineExcelService();
         this.prioridadeService = new PrioridadeService();
         this.workingDays = new ArrayList<>();
+        this.allSprints = new ArrayList<>();
+        this.workingDaysBySprint = new HashMap<>();
     }
 
     @FXML
     public void initialize() {
         loadMembros();
+        loadSprints();
         loadAndBuildTimeline();
+        setupTimelineClickHandler();
+    }
+    
+    /**
+     * Configura handler de clique no Timeline para criar Feature em área vazia
+     */
+    private void setupTimelineClickHandler() {
+        timelineContainer.setOnMouseClicked(event -> {
+            // Verificar se NÃO clicou em um GridPane (que são os itens do timeline)
+            // e se NÃO clicou em um Label (que são as células dos itens)
+            javafx.scene.Node target = (javafx.scene.Node) event.getTarget();
+            
+            // Percorrer a hierarquia para verificar se está dentro de um GridPane de item
+            boolean isInsideItemRow = false;
+            javafx.scene.Node current = target;
+            while (current != null && current != timelineContainer) {
+                if (current instanceof javafx.scene.layout.GridPane) {
+                    // Verificar se este GridPane tem contexto de item (tem mais de 3 colunas)
+                    javafx.scene.layout.GridPane grid = (javafx.scene.layout.GridPane) current;
+                    if (grid.getChildren().size() > 3) {
+                        isInsideItemRow = true;
+                        break;
+                    }
+                }
+                current = current.getParent();
+            }
+            
+            // Se não está dentro de uma linha de item e é clique direito, mostrar menu
+            if (!isInsideItemRow && event.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                // Detectar em qual Sprint o usuário clicou baseado na posição X
+                SprintDTO clickedSprint = detectSprintFromClickPosition(event.getX());
+                showCreateFeatureContextMenu(event.getScreenX(), event.getScreenY(), clickedSprint);
+                event.consume();
+            }
+        });
+    }
+    
+    /**
+     * Detecta em qual Sprint o usuário clicou baseado na posição X do clique
+     */
+    private SprintDTO detectSprintFromClickPosition(double clickX) {
+        // Calcular largura das colunas extras
+        boolean showProjeto = showProjetoCheckBox.isSelected();
+        boolean showAplicacao = showAplicacaoCheckBox.isSelected();
+        int extraColumnsCount = 0;
+        if (showProjeto) extraColumnsCount++;
+        if (showAplicacao) extraColumnsCount++;
+        
+        // Largura das colunas fixas (TIPO + TÍTULO + MEMBRO + extras)
+        int fixedColumnsWidth = 80 + 350 + 150 + (extraColumnsCount * 120);
+        
+        // Se clicou antes das colunas de dias, retornar primeira Sprint
+        if (clickX < fixedColumnsWidth) {
+            return allSprints.isEmpty() ? null : allSprints.get(0);
+        }
+        
+        // Calcular em qual Sprint clicou baseado na posição
+        double currentX = fixedColumnsWidth;
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null) {
+                double sprintWidth = sprintDays.size() * 32; // 32px por dia
+                if (clickX >= currentX && clickX < currentX + sprintWidth) {
+                    return sprint;
+                }
+                currentX += sprintWidth;
+            }
+        }
+        
+        // Se não encontrou, retornar última Sprint
+        return allSprints.isEmpty() ? null : allSprints.get(allSprints.size() - 1);
     }
     
     private void loadMembros() {
         List<MembroDTO> membros = membroService.findAll();
         membroFilterComboBox.setItems(FXCollections.observableArrayList(membros));
+    }
+    
+    private void loadSprints() {
+        List<SprintDTO> sprints = sprintService.findAll();
+        sprintFilterComboBox.setItems(FXCollections.observableArrayList(sprints));
     }
     
     @FXML
@@ -104,6 +188,12 @@ public class TimelineController extends BaseController {
     @FXML
     protected void onClearMembroFilter() {
         membroFilterComboBox.setValue(null);
+        loadAndBuildTimeline();
+    }
+    
+    @FXML
+    protected void onClearSprintFilter() {
+        sprintFilterComboBox.setValue(null);
         loadAndBuildTimeline();
     }
     
@@ -119,8 +209,8 @@ public class TimelineController extends BaseController {
     
     @FXML
     protected void onExportToExcel() {
-        if (selectedSprint == null) {
-            showErrorAlert("Erro", "Nenhuma sprint selecionada para exportar.");
+        if (allSprints == null || allSprints.isEmpty()) {
+            showErrorAlert("Erro", "Nenhuma sprint disponível para exportar.");
             return;
         }
         
@@ -134,7 +224,7 @@ public class TimelineController extends BaseController {
             MembroDTO membroFilter = membroFilterComboBox.getValue();
             
             java.io.File excelFile = excelService.exportToExcel(
-                selectedSprint, 
+                allSprints, 
                 showFeatures, 
                 showHistorias, 
                 showTarefas, 
@@ -173,16 +263,39 @@ public class TimelineController extends BaseController {
 
 
     private void loadAndBuildTimeline() {
-        List<SprintDTO> sprints = sprintService.findAll();
-        if (!sprints.isEmpty()) {
-            selectedSprint = sprints.get(0); // Carregar primeira sprint automaticamente
-            calculateWorkingDays();
+        List<SprintDTO> allSprintsFromDB = sprintService.findAll();
+        
+        // Aplicar filtro de Sprint se selecionado
+        SprintDTO sprintFilter = sprintFilterComboBox.getValue();
+        if (sprintFilter != null) {
+            allSprints = allSprintsFromDB.stream()
+                .filter(s -> s.getId().equals(sprintFilter.getId()))
+                .collect(Collectors.toList());
+        } else {
+            allSprints = allSprintsFromDB;
+        }
+        
+        if (!allSprints.isEmpty()) {
+            selectedSprint = allSprints.get(0); // Manter para compatibilidade com export
+            calculateWorkingDaysForAllSprints();
             buildTimeline();
         }
     }
 
     private void calculateWorkingDays() {
         workingDays = timelineService.calculateWorkingDays(selectedSprint);
+    }
+    
+    private void calculateWorkingDaysForAllSprints() {
+        workingDaysBySprint.clear();
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> days = timelineService.calculateWorkingDays(sprint);
+            workingDaysBySprint.put(sprint.getId(), days);
+        }
+        // Manter workingDays para compatibilidade
+        if (!allSprints.isEmpty()) {
+            workingDays = workingDaysBySprint.get(allSprints.get(0).getId());
+        }
     }
 
     private void buildTimeline() {
@@ -192,8 +305,14 @@ public class TimelineController extends BaseController {
         GridPane header = createHeader();
         timelineContainer.getChildren().add(header);
         
-        // Buscar itens organizados hierarquicamente
-        List<TimelineService.TimelineItem> timelineItems = timelineService.buildHierarchicalTimeline(selectedSprint.getId());
+        // Buscar itens de todas as Sprints organizados hierarquicamente
+        List<TimelineService.TimelineItem> allTimelineItems = new ArrayList<>();
+        for (SprintDTO sprint : allSprints) {
+            List<TimelineService.TimelineItem> sprintItems = timelineService.buildHierarchicalTimeline(sprint.getId());
+            allTimelineItems.addAll(sprintItems);
+        }
+        
+        List<TimelineService.TimelineItem> timelineItems = allTimelineItems;
         
         // Aplicar filtros
         timelineItems = applyFilters(timelineItems);
@@ -204,8 +323,11 @@ public class TimelineController extends BaseController {
             allItems.add(ti.getItem());
         }
         
-        // Rastrear dias alocados por membro
-        Map<Long, Integer> memberAllocations = new HashMap<>();
+        // Rastrear dias alocados por membro POR SPRINT
+        Map<Long, Map<Long, Integer>> memberAllocationsBySprint = new HashMap<>();
+        for (SprintDTO sprint : allSprints) {
+            memberAllocationsBySprint.put(sprint.getId(), new HashMap<>());
+        }
         
         int colorIndex = 0;
         String currentFeatureColor = COLORS[0]; // Cor padrão inicial
@@ -228,6 +350,13 @@ public class TimelineController extends BaseController {
             } else {
                 // Tarefa/SUB - usar cor da Feature pai (ou cor padrão se Feature foi filtrada)
                 rowColor = adjustBrightness(currentFeatureColor, 0.8);
+            }
+            
+            // Obter memberAllocations da Sprint específica do item
+            Map<Long, Integer> memberAllocations = memberAllocationsBySprint.get(item.getSprintId());
+            if (memberAllocations == null) {
+                memberAllocations = new HashMap<>();
+                memberAllocationsBySprint.put(item.getSprintId(), memberAllocations);
             }
             
             // Calcular dia inicial e duração
@@ -259,8 +388,6 @@ public class TimelineController extends BaseController {
         header.setHgap(0);
         header.setVgap(0);
         
-        int totalDays = workingDays.size();
-        
         // Calcular largura das colunas extras
         boolean showProjeto = showProjetoCheckBox.isSelected();
         boolean showAplicacao = showAplicacaoCheckBox.isSelected();
@@ -276,12 +403,21 @@ public class TimelineController extends BaseController {
             extraColumnsCount++;
         }
         
+        // Calcular total de dias de todas as Sprints
+        int totalDaysAllSprints = 0;
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> days = workingDaysBySprint.get(sprint.getId());
+            if (days != null) {
+                totalDaysAllSprints += days.size();
+            }
+        }
+        
         int roadmapWidth = 580 + extraColumnsWidth;
         int itensSprintWidth = 430;
         int pessoasWidth = 150;
         int currentCol = 0;
         
-        // LINHA 0: "ROADMAP" mesclado até PESSOAS + colunas extras (rosa) + Nome da Sprint mesclado nas semanas (laranja)
+        // LINHA 0: "ROADMAP" mesclado até PESSOAS + colunas extras (rosa) + Nomes das Sprints mesclados nas semanas (laranja)
         Label roadmapLabel = new Label("ROADMAP");
         roadmapLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 13px; " +
             "-fx-background-color: #FFB6D9; -fx-padding: 8; -fx-alignment: center; " +
@@ -293,17 +429,25 @@ public class TimelineController extends BaseController {
         roadmapLabel.setAlignment(Pos.CENTER);
         header.add(roadmapLabel, 0, 0, 3 + extraColumnsCount, 1);
         
-        // Nome da Sprint mesclado sobre todas as semanas (laranja)
-        Label sprintNameLabel = new Label(selectedSprint.getNome().toUpperCase());
-        sprintNameLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 13px; " +
-            "-fx-background-color: #FFD4A3; -fx-padding: 8; -fx-alignment: center; " +
-            "-fx-border-color: transparent; -fx-border-width: 0;");
-        sprintNameLabel.setMinWidth(totalDays * 32);
-        sprintNameLabel.setMaxWidth(totalDays * 32);
-        sprintNameLabel.setMinHeight(35);
-        sprintNameLabel.setMaxHeight(35);
-        sprintNameLabel.setAlignment(Pos.CENTER);
-        header.add(sprintNameLabel, 3 + extraColumnsCount, 0, totalDays, 1);
+        // Adicionar nome de cada Sprint sobre suas semanas (laranja)
+        int sprintColStart = 3 + extraColumnsCount;
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null && !sprintDays.isEmpty()) {
+                int sprintTotalDays = sprintDays.size();
+                Label sprintNameLabel = new Label(sprint.getNome().toUpperCase());
+                sprintNameLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 13px; " +
+                    "-fx-background-color: #FFD4A3; -fx-padding: 8; -fx-alignment: center; " +
+                    "-fx-border-color: #999; -fx-border-width: 0 1 0 0;");
+                sprintNameLabel.setMinWidth(sprintTotalDays * 32);
+                sprintNameLabel.setMaxWidth(sprintTotalDays * 32);
+                sprintNameLabel.setMinHeight(35);
+                sprintNameLabel.setMaxHeight(35);
+                sprintNameLabel.setAlignment(Pos.CENTER);
+                header.add(sprintNameLabel, sprintColStart, 0, sprintTotalDays, 1);
+                sprintColStart += sprintTotalDays;
+            }
+        }
         
         // LINHA 1: "ITENS DA SPRINT" mesclado (laranja claro)
         Label itensSprintLabel = new Label("ITENS DA SPRINT");
@@ -358,37 +502,44 @@ public class TimelineController extends BaseController {
             currentCol++;
         }
         
-        // Separar dias por semanas na LINHA 1
+        // Separar dias por semanas na LINHA 1 para cada Sprint
         String[] weekColors = {"#A8D5E2", "#7FB3D5", "#5499C7"}; // Azul claro ao escuro
         int colIndex = currentCol; // Começa após as colunas de PESSOAS, PROJETO e APLICAÇÃO
-        int weekNumber = 1;
-        int daysInCurrentWeek = 0;
-        int weekStartCol = colIndex;
         
-        for (int i = 0; i < workingDays.size(); i++) {
-            LocalDate day = workingDays.get(i);
-            daysInCurrentWeek++;
-            
-            boolean isEndOfWeek = day.getDayOfWeek() == DayOfWeek.FRIDAY || i == workingDays.size() - 1;
-            
-            if (isEndOfWeek) {
-                String weekColor = weekColors[(weekNumber - 1) % weekColors.length];
-                Label weekLabel = new Label("S" + weekNumber);
-                weekLabel.setStyle(String.format("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; " +
-                    "-fx-background-color: %s; -fx-padding: 5; -fx-alignment: center;", weekColor));
-                weekLabel.setMinWidth(daysInCurrentWeek * 32);
-                weekLabel.setMaxWidth(daysInCurrentWeek * 32);
-                weekLabel.setMinHeight(30);
-                weekLabel.setMaxHeight(30);
-                weekLabel.setAlignment(Pos.CENTER);
-                header.add(weekLabel, weekStartCol, 1, daysInCurrentWeek, 1);
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null && !sprintDays.isEmpty()) {
+                int weekNumber = 1;
+                int daysInCurrentWeek = 0;
+                int weekStartCol = colIndex;
                 
-                weekNumber++;
-                weekStartCol = colIndex + 1;
-                daysInCurrentWeek = 0;
+                for (int i = 0; i < sprintDays.size(); i++) {
+                    LocalDate day = sprintDays.get(i);
+                    daysInCurrentWeek++;
+                    
+                    boolean isEndOfWeek = day.getDayOfWeek() == DayOfWeek.FRIDAY || i == sprintDays.size() - 1;
+                    
+                    if (isEndOfWeek) {
+                        String weekColor = weekColors[(weekNumber - 1) % weekColors.length];
+                        Label weekLabel = new Label("S" + weekNumber);
+                        weekLabel.setStyle(String.format("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; " +
+                            "-fx-background-color: %s; -fx-padding: 5; -fx-alignment: center; " +
+                            "-fx-border-color: #999; -fx-border-width: 0 1 0 0;", weekColor));
+                        weekLabel.setMinWidth(daysInCurrentWeek * 32);
+                        weekLabel.setMaxWidth(daysInCurrentWeek * 32);
+                        weekLabel.setMinHeight(30);
+                        weekLabel.setMaxHeight(30);
+                        weekLabel.setAlignment(Pos.CENTER);
+                        header.add(weekLabel, weekStartCol, 1, daysInCurrentWeek, 1);
+                        
+                        weekNumber++;
+                        weekStartCol = colIndex + 1;
+                        daysInCurrentWeek = 0;
+                    }
+                    
+                    colIndex++;
+                }
             }
-            
-            colIndex++;
         }
         
         // LINHA 2: Detalhes (TIPO, TÍTULO, PESSOAS) + Dias
@@ -452,44 +603,51 @@ public class TimelineController extends BaseController {
             currentCol++;
         }
         
-        // Dias individuais na LINHA 2
+        // Dias individuais na LINHA 2 para cada Sprint
         colIndex = currentCol; // Começa após as colunas extras
-        weekNumber = 1;
-        daysInCurrentWeek = 0;
-        weekStartCol = colIndex;
         
-        for (int i = 0; i < workingDays.size(); i++) {
-            LocalDate day = workingDays.get(i);
-            daysInCurrentWeek++;
-            
-            boolean isEndOfWeek = day.getDayOfWeek() == DayOfWeek.FRIDAY || i == workingDays.size() - 1;
-            
-            if (isEndOfWeek) {
-                String weekColor = weekColors[(weekNumber - 1) % weekColors.length];
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null && !sprintDays.isEmpty()) {
+                int weekNumber = 1;
+                int daysInCurrentWeek = 0;
+                int weekStartCol = colIndex;
                 
-                for (int j = 0; j < daysInCurrentWeek; j++) {
-                    int dayIndex = i - daysInCurrentWeek + j + 1;
-                    if (dayIndex >= 0 && dayIndex < workingDays.size()) {
-                        LocalDate currentDay = workingDays.get(dayIndex);
-                        Label dayLabel = new Label(String.valueOf(currentDay.getDayOfMonth()));
-                        dayLabel.setStyle(String.format("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 10px; " +
-                            "-fx-background-color: %s; -fx-padding: 3; -fx-alignment: center;", 
-                            adjustBrightness(weekColor, 1.3)));
-                        dayLabel.setMinWidth(32);
-                        dayLabel.setMaxWidth(32);
-                        dayLabel.setMinHeight(25);
-                        dayLabel.setMaxHeight(25);
-                        dayLabel.setAlignment(Pos.CENTER);
-                        header.add(dayLabel, weekStartCol + j, 2);
+                for (int i = 0; i < sprintDays.size(); i++) {
+                    LocalDate day = sprintDays.get(i);
+                    daysInCurrentWeek++;
+                    
+                    boolean isEndOfWeek = day.getDayOfWeek() == DayOfWeek.FRIDAY || i == sprintDays.size() - 1;
+            
+                    if (isEndOfWeek) {
+                        String weekColor = weekColors[(weekNumber - 1) % weekColors.length];
+                        
+                        for (int j = 0; j < daysInCurrentWeek; j++) {
+                            int dayIndex = i - daysInCurrentWeek + j + 1;
+                            if (dayIndex >= 0 && dayIndex < sprintDays.size()) {
+                                LocalDate currentDay = sprintDays.get(dayIndex);
+                                Label dayLabel = new Label(String.valueOf(currentDay.getDayOfMonth()));
+                                dayLabel.setStyle(String.format("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 10px; " +
+                                    "-fx-background-color: %s; -fx-padding: 3; -fx-alignment: center; " +
+                                    "-fx-border-color: #999; -fx-border-width: 0 1 0 0;", 
+                                    adjustBrightness(weekColor, 1.3)));
+                                dayLabel.setMinWidth(32);
+                                dayLabel.setMaxWidth(32);
+                                dayLabel.setMinHeight(25);
+                                dayLabel.setMaxHeight(25);
+                                dayLabel.setAlignment(Pos.CENTER);
+                                header.add(dayLabel, weekStartCol + j, 2);
+                            }
+                        }
+                        
+                        weekNumber++;
+                        weekStartCol = colIndex + 1;
+                        daysInCurrentWeek = 0;
                     }
+                    
+                    colIndex++;
                 }
-                
-                weekNumber++;
-                weekStartCol = colIndex + 1;
-                daysInCurrentWeek = 0;
             }
-            
-            colIndex++;
         }
         
         return header;
@@ -579,29 +737,50 @@ public class TimelineController extends BaseController {
         // Se customDuration >= 0, usar ele; caso contrário, usar duração padrão do item
         int duration = customDuration >= 0 ? customDuration : calculateDurationInDays(item);
         
-        // Colunas de dias
-        int colIndex = currentCol;
-        int daysAllocated = 0;
-        for (int i = 0; i < workingDays.size(); i++) {
-            Label dayCell = new Label();
-            dayCell.setMinWidth(32);
-            dayCell.setMaxWidth(32);
-            dayCell.setMinHeight(30);
-            dayCell.setMaxHeight(30);
-            dayCell.setAlignment(Pos.CENTER);
-            
-            // Verificar se este dia está dentro do período de alocação do item
-            if (i >= startDay && daysAllocated < duration) {
-                dayCell.setStyle(String.format("-fx-background-color: %s; -fx-border-color: white; " +
-                    "-fx-border-width: 0; -fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 0;", color));
-                dayCell.setText(String.valueOf(workingDays.get(i).getDayOfMonth()));
-                daysAllocated++;
-            } else {
-                dayCell.setStyle("-fx-background-color: transparent; -fx-padding: 0;");
+        // Calcular offset de coluna baseado na Sprint do item
+        int sprintColumnOffset = currentCol;
+        for (SprintDTO sprint : allSprints) {
+            if (sprint.getId().equals(item.getSprintId())) {
+                break;
             }
-            
-            row.add(dayCell, colIndex, 0);
-            colIndex++;
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null) {
+                sprintColumnOffset += sprintDays.size();
+            }
+        }
+        
+        // Obter dias úteis da Sprint do item
+        List<LocalDate> itemSprintDays = workingDaysBySprint.get(item.getSprintId());
+        if (itemSprintDays == null) {
+            itemSprintDays = new ArrayList<>();
+        }
+        
+        // Renderizar células de dias para TODAS as Sprints
+        int colIndex = currentCol;
+        for (SprintDTO sprint : allSprints) {
+            List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
+            if (sprintDays != null) {
+                for (int i = 0; i < sprintDays.size(); i++) {
+                    Label dayCell = new Label();
+                    dayCell.setMinWidth(32);
+                    dayCell.setMaxWidth(32);
+                    dayCell.setMinHeight(30);
+                    dayCell.setMaxHeight(30);
+                    dayCell.setAlignment(Pos.CENTER);
+                    
+                    // Verificar se este item pertence a esta Sprint e se este dia está dentro do período de alocação
+                    if (sprint.getId().equals(item.getSprintId()) && i >= startDay && i < startDay + duration) {
+                        dayCell.setStyle(String.format("-fx-background-color: %s; -fx-border-color: white; " +
+                            "-fx-border-width: 0; -fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 0;", color));
+                        dayCell.setText(String.valueOf(sprintDays.get(i).getDayOfMonth()));
+                    } else {
+                        dayCell.setStyle("-fx-background-color: transparent; -fx-padding: 0;");
+                    }
+                    
+                    row.add(dayCell, colIndex, 0);
+                    colIndex++;
+                }
+            }
         }
         
         return row;
@@ -1123,6 +1302,139 @@ public class TimelineController extends BaseController {
                 loadAndBuildTimeline();
             } catch (Exception e) {
                 showErrorAlert("Erro", "Erro ao salvar Tarefa: " + e.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * Exibe menu de contexto para criar Feature em área vazia
+     */
+    private void showCreateFeatureContextMenu(double screenX, double screenY, SprintDTO detectedSprint) {
+        ContextMenu contextMenu = new ContextMenu();
+        
+        String sprintName = detectedSprint != null ? detectedSprint.getNome() : "Sprint";
+        MenuItem criarFeatureItem = new MenuItem("Criar Feature na " + sprintName);
+        criarFeatureItem.setOnAction(event -> {
+            try {
+                openCreateFeatureDialog(detectedSprint);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao criar Feature: " + e.getMessage());
+            }
+        });
+        
+        contextMenu.getItems().add(criarFeatureItem);
+        contextMenu.show(timelineContainer.getScene().getWindow(), screenX, screenY);
+    }
+    
+    /**
+     * Abre dialog para criar nova Feature
+     */
+    private void openCreateFeatureDialog(SprintDTO preSelectedSprint) {
+        javafx.scene.control.Dialog<ItemSprintDTO> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Criar Feature");
+        dialog.setHeaderText("Nova Feature");
+        
+        javafx.scene.control.ButtonType salvarButtonType = new javafx.scene.control.ButtonType("Salvar", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(salvarButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        javafx.scene.control.TextField tituloField = new javafx.scene.control.TextField();
+        tituloField.setPromptText("Título");
+        
+        javafx.scene.control.TextArea descricaoArea = new javafx.scene.control.TextArea();
+        descricaoArea.setPromptText("Descrição");
+        descricaoArea.setPrefRowCount(3);
+        
+        javafx.scene.control.TextField duracaoSemanasField = new javafx.scene.control.TextField();
+        duracaoSemanasField.setPromptText("Duração em semanas");
+        
+        javafx.scene.control.ComboBox<SprintDTO> sprintComboBox = new javafx.scene.control.ComboBox<>();
+        sprintComboBox.setItems(javafx.collections.FXCollections.observableArrayList(allSprints));
+        sprintComboBox.setPromptText("Selecione uma Sprint");
+        // Pré-selecionar a Sprint detectada pelo clique
+        if (preSelectedSprint != null) {
+            sprintComboBox.setValue(preSelectedSprint);
+        } else if (!allSprints.isEmpty()) {
+            sprintComboBox.setValue(allSprints.get(0));
+        }
+        
+        javafx.scene.control.ComboBox<MembroDTO> membroComboBox = new javafx.scene.control.ComboBox<>();
+        membroComboBox.setItems(javafx.collections.FXCollections.observableArrayList(membroService.findAll()));
+        membroComboBox.setPromptText("Selecione um membro");
+        
+        javafx.scene.control.ComboBox<String> statusComboBox = new javafx.scene.control.ComboBox<>();
+        statusComboBox.setItems(javafx.collections.FXCollections.observableArrayList(
+            "CRIADO", "PLANEJADO", "REFINADO", "EM_EXECUCAO", "EM_TESTES", "CONCLUIDO", "CANCELADO", "IMPEDIDO"
+        ));
+        statusComboBox.setValue("CRIADO");
+        
+        grid.add(new javafx.scene.control.Label("Título:"), 0, 0);
+        grid.add(tituloField, 1, 0);
+        grid.add(new javafx.scene.control.Label("Descrição:"), 0, 1);
+        grid.add(descricaoArea, 1, 1);
+        grid.add(new javafx.scene.control.Label("Duração (semanas):"), 0, 2);
+        grid.add(duracaoSemanasField, 1, 2);
+        grid.add(new javafx.scene.control.Label("Sprint:"), 0, 3);
+        grid.add(sprintComboBox, 1, 3);
+        grid.add(new javafx.scene.control.Label("Membro:"), 0, 4);
+        grid.add(membroComboBox, 1, 4);
+        grid.add(new javafx.scene.control.Label("Status:"), 0, 5);
+        grid.add(statusComboBox, 1, 5);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        javafx.application.Platform.runLater(() -> tituloField.requestFocus());
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == salvarButtonType) {
+                if (tituloField.getText().trim().isEmpty()) {
+                    showErrorAlert("Erro", "O título é obrigatório!");
+                    return null;
+                }
+                
+                if (sprintComboBox.getValue() == null) {
+                    showErrorAlert("Erro", "A Sprint é obrigatória!");
+                    return null;
+                }
+                
+                ItemSprintDTO feature = new ItemSprintDTO();
+                feature.setTipo(TipoItem.FEATURE);
+                feature.setTitulo(tituloField.getText().trim());
+                feature.setDescricao(descricaoArea.getText().trim());
+                feature.setSprintId(sprintComboBox.getValue().getId());
+                feature.setStatus(br.tec.jessebezerra.app.entity.StatusItem.valueOf(statusComboBox.getValue()));
+                
+                if (!duracaoSemanasField.getText().trim().isEmpty()) {
+                    try {
+                        feature.setDuracaoSemanas(Integer.parseInt(duracaoSemanasField.getText().trim()));
+                    } catch (NumberFormatException e) {
+                        showErrorAlert("Erro", "Duração deve ser um número válido!");
+                        return null;
+                    }
+                }
+                
+                if (membroComboBox.getValue() != null) {
+                    feature.setMembroId(membroComboBox.getValue().getId());
+                }
+                
+                return feature;
+            }
+            return null;
+        });
+        
+        java.util.Optional<ItemSprintDTO> result = dialog.showAndWait();
+        result.ifPresent(feature -> {
+            try {
+                ItemSprintService itemSprintService = new ItemSprintService();
+                itemSprintService.create(feature);
+                showAlert("Sucesso", "Feature criada com sucesso!");
+                loadAndBuildTimeline();
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao salvar Feature: " + e.getMessage());
             }
         });
     }

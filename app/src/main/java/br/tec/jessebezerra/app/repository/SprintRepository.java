@@ -95,7 +95,7 @@ public class SprintRepository {
     }
 
     public List<Sprint> findAll() {
-        String sql = "SELECT * FROM sprint ORDER BY data_inicio DESC";
+        String sql = "SELECT * FROM sprint ORDER BY data_inicio ASC";
         List<Sprint> sprints = new ArrayList<>();
         
         System.out.println("Repository.findAll() - Buscando todas as sprints...");
