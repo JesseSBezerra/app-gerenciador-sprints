@@ -53,6 +53,9 @@ public class TimelineController extends BaseController {
     private CheckBox showSubsCheckBox;
     
     @FXML
+    private CheckBox showCodigoExternoCheckBox;
+    
+    @FXML
     private CheckBox showProjetoCheckBox;
     
     @FXML
@@ -139,14 +142,26 @@ public class TimelineController extends BaseController {
      */
     private SprintDTO detectSprintFromClickPosition(double clickX) {
         // Calcular largura das colunas extras
+        boolean showCodigoExterno = showCodigoExternoCheckBox.isSelected();
         boolean showProjeto = showProjetoCheckBox.isSelected();
         boolean showAplicacao = showAplicacaoCheckBox.isSelected();
         int extraColumnsCount = 0;
-        if (showProjeto) extraColumnsCount++;
-        if (showAplicacao) extraColumnsCount++;
+        int extraColumnsWidth = 0;
+        if (showCodigoExterno) {
+            extraColumnsCount++;
+            extraColumnsWidth += 100;
+        }
+        if (showProjeto) {
+            extraColumnsCount++;
+            extraColumnsWidth += 120;
+        }
+        if (showAplicacao) {
+            extraColumnsCount++;
+            extraColumnsWidth += 120;
+        }
         
         // Largura das colunas fixas (TIPO + TÍTULO + MEMBRO + extras)
-        int fixedColumnsWidth = 80 + 350 + 150 + (extraColumnsCount * 120);
+        int fixedColumnsWidth = 80 + 350 + 150 + extraColumnsWidth;
         
         // Se clicou antes das colunas de dias, retornar primeira Sprint
         if (clickX < fixedColumnsWidth) {
@@ -219,6 +234,7 @@ public class TimelineController extends BaseController {
             boolean showHistorias = showHistoriasCheckBox.isSelected();
             boolean showTarefas = showTarefasCheckBox.isSelected();
             boolean showSubs = showSubsCheckBox.isSelected();
+            boolean showCodigoExterno = showCodigoExternoCheckBox.isSelected();
             boolean showProjeto = showProjetoCheckBox.isSelected();
             boolean showAplicacao = showAplicacaoCheckBox.isSelected();
             MembroDTO membroFilter = membroFilterComboBox.getValue();
@@ -229,6 +245,7 @@ public class TimelineController extends BaseController {
                 showHistorias, 
                 showTarefas, 
                 showSubs, 
+                showCodigoExterno,
                 showProjeto, 
                 showAplicacao, 
                 membroFilter
@@ -389,11 +406,16 @@ public class TimelineController extends BaseController {
         header.setVgap(0);
         
         // Calcular largura das colunas extras
+        boolean showCodigoExterno = showCodigoExternoCheckBox.isSelected();
         boolean showProjeto = showProjetoCheckBox.isSelected();
         boolean showAplicacao = showAplicacaoCheckBox.isSelected();
         int extraColumnsWidth = 0;
         int extraColumnsCount = 0;
         
+        if (showCodigoExterno) {
+            extraColumnsWidth += 100;
+            extraColumnsCount++;
+        }
         if (showProjeto) {
             extraColumnsWidth += 120;
             extraColumnsCount++;
@@ -413,7 +435,7 @@ public class TimelineController extends BaseController {
         }
         
         int roadmapWidth = 580 + extraColumnsWidth;
-        int itensSprintWidth = 430;
+        int itensSprintWidth = 430 + (showCodigoExterno ? 100 : 0);
         int pessoasWidth = 150;
         int currentCol = 0;
         
@@ -458,9 +480,10 @@ public class TimelineController extends BaseController {
         itensSprintLabel.setMinHeight(30);
         itensSprintLabel.setMaxHeight(30);
         itensSprintLabel.setAlignment(Pos.CENTER);
-        header.add(itensSprintLabel, 0, 1, 2, 1);
+        int itensSprintColspan = showCodigoExterno ? 3 : 2;
+        header.add(itensSprintLabel, 0, 1, itensSprintColspan, 1);
         
-        currentCol = 2;
+        currentCol = itensSprintColspan;
         
         // "PESSOAS" (laranja claro)
         Label pessoasHeaderLabel = new Label("PESSOAS");
@@ -542,7 +565,7 @@ public class TimelineController extends BaseController {
             }
         }
         
-        // LINHA 2: Detalhes (TIPO, TÍTULO, PESSOAS) + Dias
+        // LINHA 2: Detalhes (TIPO, CÓDIGO EXTERNO, TÍTULO, PESSOAS) + Dias
         Label tipoLabel = new Label("TIPO");
         tipoLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
             "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
@@ -553,6 +576,22 @@ public class TimelineController extends BaseController {
         tipoLabel.setAlignment(Pos.CENTER);
         header.add(tipoLabel, 0, 2);
         
+        currentCol = 1;
+        
+        // Adicionar coluna CÓDIGO EXTERNO na linha 2 se visível
+        if (showCodigoExterno) {
+            Label codigoExternoLabel = new Label("CÓDIGO EXTERNO");
+            codigoExternoLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
+                "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
+            codigoExternoLabel.setMinWidth(100);
+            codigoExternoLabel.setMaxWidth(100);
+            codigoExternoLabel.setMinHeight(25);
+            codigoExternoLabel.setMaxHeight(25);
+            codigoExternoLabel.setAlignment(Pos.CENTER);
+            header.add(codigoExternoLabel, currentCol, 2);
+            currentCol++;
+        }
+        
         Label tituloLabel = new Label("TÍTULO");
         tituloLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
             "-fx-background-color: #E0E0E0; -fx-padding: 5 5 5 15; -fx-alignment: center-left;");
@@ -561,7 +600,8 @@ public class TimelineController extends BaseController {
         tituloLabel.setMinHeight(25);
         tituloLabel.setMaxHeight(25);
         tituloLabel.setAlignment(Pos.CENTER_LEFT);
-        header.add(tituloLabel, 1, 2);
+        header.add(tituloLabel, currentCol, 2);
+        currentCol++;
         
         Label pessoasLabel = new Label("MEMBRO");
         pessoasLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
@@ -571,9 +611,8 @@ public class TimelineController extends BaseController {
         pessoasLabel.setMinHeight(25);
         pessoasLabel.setMaxHeight(25);
         pessoasLabel.setAlignment(Pos.CENTER);
-        header.add(pessoasLabel, 2, 2);
-        
-        currentCol = 3;
+        header.add(pessoasLabel, currentCol, 2);
+        currentCol++;
         
         // Adicionar coluna PROJETO na linha 2 se visível
         if (showProjeto) {
@@ -681,6 +720,21 @@ public class TimelineController extends BaseController {
         tipoLabel.setAlignment(Pos.CENTER);
         row.add(tipoLabel, 0, 0);
         
+        int currentCol = 1;
+        
+        // Coluna de Código Externo (se visível)
+        if (showCodigoExternoCheckBox.isSelected()) {
+            Label codigoExternoLabel = new Label(item.getCodigoExterno() != null ? item.getCodigoExterno() : "-");
+            codigoExternoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-background-color: white; -fx-padding: 5;");
+            codigoExternoLabel.setMinWidth(100);
+            codigoExternoLabel.setMaxWidth(100);
+            codigoExternoLabel.setMinHeight(30);
+            codigoExternoLabel.setMaxHeight(30);
+            codigoExternoLabel.setAlignment(Pos.CENTER);
+            row.add(codigoExternoLabel, currentCol, 0);
+            currentCol++;
+        }
+        
         // Coluna de título (com indentação)
         HBox tituloBox = new HBox();
         tituloBox.setAlignment(Pos.CENTER_LEFT);
@@ -693,7 +747,8 @@ public class TimelineController extends BaseController {
         tituloBox.setMaxWidth(350);
         tituloBox.setMinHeight(30);
         tituloBox.setMaxHeight(30);
-        row.add(tituloBox, 1, 0);
+        row.add(tituloBox, currentCol, 0);
+        currentCol++;
         
         // Coluna de pessoas
         Label pessoaLabel = new Label(item.getMembroNome() != null ? item.getMembroNome() : "-");
@@ -703,9 +758,8 @@ public class TimelineController extends BaseController {
         pessoaLabel.setMinHeight(30);
         pessoaLabel.setMaxHeight(30);
         pessoaLabel.setAlignment(Pos.CENTER);
-        row.add(pessoaLabel, 2, 0);
-        
-        int currentCol = 3;
+        row.add(pessoaLabel, currentCol, 0);
+        currentCol++;
         
         // Coluna de Projeto (se visível)
         if (showProjetoCheckBox.isSelected()) {

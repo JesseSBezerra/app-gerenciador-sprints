@@ -21,4 +21,5 @@ public class ItemSprint {
     private Long projetoId;
     private Long aplicacaoId;
     private Integer prioridade; // Ordem de prioridade (usado para ordenação de SUBs)
+    private String codigoExterno; // Código externo do item
 }

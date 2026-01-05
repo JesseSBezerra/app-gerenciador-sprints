@@ -64,6 +64,7 @@
                 <VBox spacing="8">
                     <Label text="Exibir Colunas:" styleClass="filter-label" style="-fx-font-weight: bold;"/>
                     <HBox spacing="15">
+                        <CheckBox fx:id="showCodigoExternoCheckBox" text="Código Externo" selected="false" onAction="#onColumnVisibilityChanged"/>
                         <CheckBox fx:id="showProjetoCheckBox" text="Projeto" selected="false" onAction="#onColumnVisibilityChanged"/>
                         <CheckBox fx:id="showAplicacaoCheckBox" text="Aplicação" selected="false" onAction="#onColumnVisibilityChanged"/>
                     </HBox>

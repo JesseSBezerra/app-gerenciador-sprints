@@ -33,7 +33,8 @@ public class TimelineExcelService {
     }
     
     public File exportToExcel(List<SprintDTO> sprints, boolean showFeatures, boolean showHistorias, 
-                              boolean showTarefas, boolean showSubs, boolean showProjeto, boolean showAplicacao,
+                              boolean showTarefas, boolean showSubs, boolean showCodigoExterno, 
+                              boolean showProjeto, boolean showAplicacao,
                               MembroDTO membroFilter) throws IOException {
         
         Workbook workbook = new XSSFWorkbook();
@@ -60,14 +61,14 @@ public class TimelineExcelService {
         
         // Criar cabeçalho
         int currentRow = 0;
-        currentRow = createHeaderMultipleSprints(workbook, sheet, sprints, workingDaysBySprint, showProjeto, showAplicacao);
+        currentRow = createHeaderMultipleSprints(workbook, sheet, sprints, workingDaysBySprint, showCodigoExterno, showProjeto, showAplicacao);
         
         // Criar linhas de itens
-        createItemRowsMultipleSprints(workbook, sheet, allTimelineItems, sprints, workingDaysBySprint, currentRow, showProjeto, showAplicacao);
+        createItemRowsMultipleSprints(workbook, sheet, allTimelineItems, sprints, workingDaysBySprint, currentRow, showCodigoExterno, showProjeto, showAplicacao);
         
         // Ajustar larguras das colunas
         int totalDays = workingDaysBySprint.values().stream().mapToInt(List::size).sum();
-        adjustColumnWidths(sheet, totalDays, showProjeto, showAplicacao);
+        adjustColumnWidths(sheet, totalDays, showCodigoExterno, showProjeto, showAplicacao);
         
         // Salvar arquivo
         String fileName = sprints.size() == 1 ? 
@@ -133,9 +134,10 @@ public class TimelineExcelService {
     
     private int createHeaderMultipleSprints(Workbook workbook, Sheet sheet, List<SprintDTO> sprints,
                                            Map<Long, List<LocalDate>> workingDaysBySprint, 
-                                           boolean showProjeto, boolean showAplicacao) {
+                                           boolean showCodigoExterno, boolean showProjeto, boolean showAplicacao) {
         
         int extraColumns = 0;
+        if (showCodigoExterno) extraColumns++;
         if (showProjeto) extraColumns++;
         if (showAplicacao) extraColumns++;
         
@@ -148,10 +150,10 @@ public class TimelineExcelService {
         Cell roadmapCell = row0.createCell(0);
         roadmapCell.setCellValue("ROADMAP");
         roadmapCell.setCellStyle(createHeaderStyle(workbook, "#FFB6D9", true, 13));
-        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 2 + extraColumns));
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3 + extraColumns));
         
         // Adicionar nome de cada Sprint
-        int sprintColStart = 3 + extraColumns;
+        int sprintColStart = 4 + extraColumns;
         for (SprintDTO sprint : sprints) {
             List<LocalDate> sprintDays = workingDaysBySprint.get(sprint.getId());
             if (sprintDays != null && !sprintDays.isEmpty()) {
@@ -177,7 +179,11 @@ public class TimelineExcelService {
         pessoasCell.setCellValue("PESSOAS");
         pessoasCell.setCellStyle(createHeaderStyle(workbook, "#FFD4A3", true, 12));
         
-        int currentCol = 3;
+        Cell sprintRow1Cell = row1.createCell(3);
+        sprintRow1Cell.setCellValue("SPRINT");
+        sprintRow1Cell.setCellStyle(createHeaderStyle(workbook, "#FFD4A3", true, 12));
+        
+        int currentCol = 4;
         
         if (showProjeto) {
             Cell projetoCell = row1.createCell(currentCol);
@@ -230,7 +236,7 @@ public class TimelineExcelService {
             }
         }
         
-        // LINHA 2: TIPO + TÍTULO + MEMBRO + PROJETO + APLICAÇÃO + Dias
+        // LINHA 2: TIPO + CÓDIGO EXTERNO + TÍTULO + MEMBRO + SPRINT + PROJETO + APLICAÇÃO + Dias
         Row row2 = sheet.createRow(2);
         row2.setHeightInPoints(20);
         
@@ -238,15 +244,29 @@ public class TimelineExcelService {
         tipoCell.setCellValue("TIPO");
         tipoCell.setCellStyle(createDetailHeaderStyle(workbook));
         
-        Cell tituloCell = row2.createCell(1);
+        currentCol = 1;
+        
+        if (showCodigoExterno) {
+            Cell codigoExternoCell = row2.createCell(currentCol);
+            codigoExternoCell.setCellValue("CÓDIGO EXTERNO");
+            codigoExternoCell.setCellStyle(createDetailHeaderStyle(workbook));
+            currentCol++;
+        }
+        
+        Cell tituloCell = row2.createCell(currentCol);
         tituloCell.setCellValue("TÍTULO");
         tituloCell.setCellStyle(createDetailHeaderStyle(workbook));
+        currentCol++;
         
-        Cell membroCell = row2.createCell(2);
+        Cell membroCell = row2.createCell(currentCol);
         membroCell.setCellValue("MEMBRO");
         membroCell.setCellStyle(createDetailHeaderStyle(workbook));
+        currentCol++;
         
-        currentCol = 3;
+        Cell sprintHeaderCell = row2.createCell(currentCol);
+        sprintHeaderCell.setCellValue("SPRINT");
+        sprintHeaderCell.setCellStyle(createDetailHeaderStyle(workbook));
+        currentCol++;
         
         if (showProjeto) {
             Cell projetoDetailCell = row2.createCell(currentCol);
@@ -262,7 +282,7 @@ public class TimelineExcelService {
             currentCol++;
         }
         
-        // Adicionar dias para cada Sprint
+        // Ajustar coluna inicial para dias (após SPRINT)
         colIndex = currentCol;
         
         for (SprintDTO sprint : sprints) {
@@ -297,6 +317,10 @@ public class TimelineExcelService {
                 }
             }
         }
+        
+        // Aplicar AutoFilter para permitir filtrar por Sprint
+        int lastCol = colIndex - 1;
+        sheet.setAutoFilter(new CellRangeAddress(2, 2, 0, lastCol));
         
         return 3;
     }
@@ -450,7 +474,7 @@ public class TimelineExcelService {
                                               List<SprintDTO> sprints,
                                               Map<Long, List<LocalDate>> workingDaysBySprint,
                                               int startRow,
-                                              boolean showProjeto, boolean showAplicacao) {
+                                              boolean showCodigoExterno, boolean showProjeto, boolean showAplicacao) {
         
         int currentRow = startRow;
         int colorIndex = 0;
@@ -513,18 +537,41 @@ public class TimelineExcelService {
             tipoCell.setCellValue(getTipoLabel(item.getTipo()));
             tipoCell.setCellStyle(createItemCellStyle(workbook, rowColor, true, 10));
             
+            int currentCol = 1;
+            
+            // CÓDIGO EXTERNO (se visível)
+            if (showCodigoExterno) {
+                Cell codigoExternoCell = row.createCell(currentCol);
+                codigoExternoCell.setCellValue(item.getCodigoExterno() != null ? item.getCodigoExterno() : "-");
+                codigoExternoCell.setCellStyle(createItemCellStyle(workbook, "#FFFFFF", false, 11));
+                currentCol++;
+            }
+            
             // TÍTULO (com indentação)
-            Cell tituloCell = row.createCell(1);
+            Cell tituloCell = row.createCell(currentCol);
             String indent = "  ".repeat(indentLevel);
             tituloCell.setCellValue(indent + item.getTitulo());
             tituloCell.setCellStyle(createItemCellStyle(workbook, "#FFFFFF", false, 11));
+            currentCol++;
             
             // MEMBRO
-            Cell membroCell = row.createCell(2);
+            Cell membroCell = row.createCell(currentCol);
             membroCell.setCellValue(item.getMembroNome() != null ? item.getMembroNome() : "-");
             membroCell.setCellStyle(createItemCellStyle(workbook, "#FFFFFF", false, 11));
+            currentCol++;
             
-            int currentCol = 3;
+            // SPRINT - Encontrar nome da Sprint do item
+            String sprintName = "";
+            for (SprintDTO sprint : sprints) {
+                if (sprint.getId().equals(item.getSprintId())) {
+                    sprintName = sprint.getNome();
+                    break;
+                }
+            }
+            Cell sprintItemCell = row.createCell(currentCol);
+            sprintItemCell.setCellValue(sprintName);
+            sprintItemCell.setCellStyle(createItemCellStyle(workbook, "#FFFFFF", false, 11));
+            currentCol++;
             
             // PROJETO
             if (showProjeto) {
@@ -672,12 +719,24 @@ public class TimelineExcelService {
         }
     }
     
-    private void adjustColumnWidths(Sheet sheet, int totalDays, boolean showProjeto, boolean showAplicacao) {
+    private void adjustColumnWidths(Sheet sheet, int totalDays, boolean showCodigoExterno, boolean showProjeto, boolean showAplicacao) {
         sheet.setColumnWidth(0, 15 * 256); // TIPO
-        sheet.setColumnWidth(1, 50 * 256); // TÍTULO
-        sheet.setColumnWidth(2, 20 * 256); // MEMBRO
         
-        int currentCol = 3;
+        int currentCol = 1;
+        
+        if (showCodigoExterno) {
+            sheet.setColumnWidth(currentCol, 20 * 256); // CÓDIGO EXTERNO
+            currentCol++;
+        }
+        
+        sheet.setColumnWidth(currentCol, 50 * 256); // TÍTULO
+        currentCol++;
+        
+        sheet.setColumnWidth(currentCol, 20 * 256); // MEMBRO
+        currentCol++;
+        
+        sheet.setColumnWidth(currentCol, 20 * 256); // SPRINT
+        currentCol++;
         
         if (showProjeto) {
             sheet.setColumnWidth(currentCol, 20 * 256); // PROJETO

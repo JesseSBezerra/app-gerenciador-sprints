@@ -60,28 +60,33 @@
                           GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.columnSpan="3" 
                           styleClass="form-field"/>
                 
-                <Label text="Sprint:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <Label text="Código Externo:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <TextField fx:id="codigoExternoField" promptText="Digite o código externo (opcional)" 
+                          GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.columnSpan="3" 
+                          styleClass="form-field"/>
+                
+                <Label text="Sprint:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
                 <ComboBox fx:id="sprintComboBox" promptText="Selecione a sprint" 
-                         GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-field"
-                         maxWidth="Infinity"/>
-                
-                <Label text="Duração (semanas):" GridPane.columnIndex="2" GridPane.rowIndex="1" styleClass="form-label"/>
-                <Spinner fx:id="duracaoSpinner" GridPane.columnIndex="3" GridPane.rowIndex="1" 
-                        styleClass="form-field" maxWidth="Infinity" editable="true"/>
-                
-                <Label text="Status:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
-                <ComboBox fx:id="statusComboBox" promptText="Selecione o status" 
                          GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"
                          maxWidth="Infinity"/>
                 
-                <Label text="Membro:" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="form-label"/>
-                <ComboBox fx:id="membroComboBox" promptText="Selecione o membro (opcional)" 
-                         GridPane.columnIndex="3" GridPane.rowIndex="2" styleClass="form-field"
+                <Label text="Duração (semanas):" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="form-label"/>
+                <Spinner fx:id="duracaoSpinner" GridPane.columnIndex="3" GridPane.rowIndex="2" 
+                        styleClass="form-field" maxWidth="Infinity" editable="true"/>
+                
+                <Label text="Status:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="statusComboBox" promptText="Selecione o status" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"
                          maxWidth="Infinity"/>
                 
-                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+                <Label text="Membro:" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="membroComboBox" promptText="Selecione o membro (opcional)" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
                 <TextArea fx:id="descricaoTextArea" promptText="Digite a descrição da feature" 
-                         GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.columnSpan="3" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="4" GridPane.columnSpan="3" 
                          styleClass="form-field" prefRowCount="3" wrapText="true"/>
             </GridPane>
             
