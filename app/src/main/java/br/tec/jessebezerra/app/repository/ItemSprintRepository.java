@@ -13,8 +13,8 @@ import java.util.Optional;
 public class ItemSprintRepository {
 
     public ItemSprint save(ItemSprint item) {
-        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id, prioridade) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id, prioridade, codigo_externo) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -66,6 +66,12 @@ public class ItemSprintRepository {
                 pstmt.setInt(12, item.getPrioridade());
             } else {
                 pstmt.setNull(12, Types.INTEGER);
+            }
+            
+            if (item.getCodigoExterno() != null) {
+                pstmt.setString(13, item.getCodigoExterno());
+            } else {
+                pstmt.setNull(13, Types.VARCHAR);
             }
             
             pstmt.executeUpdate();
@@ -85,7 +91,7 @@ public class ItemSprintRepository {
 
     public ItemSprint update(ItemSprint item) {
         String sql = "UPDATE item_sprint SET tipo = ?, titulo = ?, descricao = ?, duracao_semanas = ?, duracao_dias = ?, " +
-                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ?, prioridade = ? WHERE id = ?";
+                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ?, prioridade = ?, codigo_externo = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -139,7 +145,13 @@ public class ItemSprintRepository {
                 pstmt.setNull(12, Types.INTEGER);
             }
             
-            pstmt.setLong(13, item.getId());
+            if (item.getCodigoExterno() != null) {
+                pstmt.setString(13, item.getCodigoExterno());
+            } else {
+                pstmt.setNull(13, Types.VARCHAR);
+            }
+            
+            pstmt.setLong(14, item.getId());
             
             pstmt.executeUpdate();
             return item;
@@ -324,6 +336,11 @@ public class ItemSprintRepository {
         int prioridade = rs.getInt("prioridade");
         if (!rs.wasNull()) {
             item.setPrioridade(prioridade);
+        }
+        
+        String codigoExterno = rs.getString("codigo_externo");
+        if (!rs.wasNull()) {
+            item.setCodigoExterno(codigoExterno);
         }
         
         return item;

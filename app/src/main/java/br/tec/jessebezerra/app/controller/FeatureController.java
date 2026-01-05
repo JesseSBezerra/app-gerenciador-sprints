@@ -21,6 +21,7 @@ import java.util.Optional;
 public class FeatureController extends BaseController {
     
     @FXML private TextField tituloField;
+    @FXML private TextField codigoExternoField;
     @FXML private TextArea descricaoTextArea;
     @FXML private Spinner<Integer> duracaoSpinner;
     @FXML private ComboBox<StatusItem> statusComboBox;
@@ -100,6 +101,7 @@ public class FeatureController extends BaseController {
         dto.setId(editingId);
         dto.setTipo(TipoItem.FEATURE);
         dto.setTitulo(tituloField.getText());
+        dto.setCodigoExterno(codigoExternoField.getText().trim().isEmpty() ? null : codigoExternoField.getText().trim());
         dto.setDescricao(descricaoTextArea.getText());
         dto.setDuracaoSemanas(duracaoSpinner.getValue());
         dto.setStatus(statusComboBox.getValue());
@@ -137,6 +139,7 @@ public class FeatureController extends BaseController {
         if (selected != null) {
             editingId = selected.getId();
             tituloField.setText(selected.getTitulo());
+            codigoExternoField.setText(selected.getCodigoExterno() != null ? selected.getCodigoExterno() : "");
             descricaoTextArea.setText(selected.getDescricao());
             duracaoSpinner.getValueFactory().setValue(selected.getDuracaoSemanas());
             statusComboBox.setValue(selected.getStatus());
@@ -238,6 +241,7 @@ public class FeatureController extends BaseController {
             FeatureTableModel model = new FeatureTableModel(
                 dto.getId(),
                 dto.getTitulo(),
+                dto.getCodigoExterno(),
                 dto.getDescricao(),
                 dto.getDuracaoSemanas(),
                 dto.getStatus(),
@@ -255,6 +259,7 @@ public class FeatureController extends BaseController {
     private void clearForm() {
         editingId = null;
         tituloField.clear();
+        codigoExternoField.clear();
         descricaoTextArea.clear();
         duracaoSpinner.getValueFactory().setValue(2);
         statusComboBox.setValue(StatusItem.CRIADO);
@@ -322,6 +327,7 @@ public class FeatureController extends BaseController {
     public static class FeatureTableModel {
         private final SimpleLongProperty id;
         private final SimpleStringProperty titulo;
+        private final SimpleStringProperty codigoExterno;
         private final SimpleStringProperty descricao;
         private final SimpleIntegerProperty duracaoSemanas;
         private final SimpleObjectProperty<StatusItem> status;
@@ -330,11 +336,12 @@ public class FeatureController extends BaseController {
         private final SimpleObjectProperty<Long> membroId;
         private final SimpleStringProperty membroNome;
 
-        public FeatureTableModel(Long id, String titulo, String descricao, Integer duracaoSemanas,
+        public FeatureTableModel(Long id, String titulo, String codigoExterno, String descricao, Integer duracaoSemanas,
                                 StatusItem status, Long sprintId, String sprintNome,
                                 Long membroId, String membroNome) {
             this.id = new SimpleLongProperty(id);
             this.titulo = new SimpleStringProperty(titulo);
+            this.codigoExterno = new SimpleStringProperty(codigoExterno);
             this.descricao = new SimpleStringProperty(descricao);
             this.duracaoSemanas = new SimpleIntegerProperty(duracaoSemanas != null ? duracaoSemanas : 0);
             this.status = new SimpleObjectProperty<>(status);
@@ -349,6 +356,9 @@ public class FeatureController extends BaseController {
         
         public String getTitulo() { return titulo.get(); }
         public SimpleStringProperty tituloProperty() { return titulo; }
+        
+        public String getCodigoExterno() { return codigoExterno.get(); }
+        public SimpleStringProperty codigoExternoProperty() { return codigoExterno; }
         
         public String getDescricao() { return descricao.get(); }
         

@@ -28,6 +28,7 @@ public class ItemSprintDTO {
     private Long aplicacaoId;
     private String aplicacaoNome; // Para exibição
     private Integer prioridade; // Ordem de prioridade (usado para ordenação de SUBs)
+    private String codigoExterno; // Código externo do item
     
     @Override
     public String toString() {
