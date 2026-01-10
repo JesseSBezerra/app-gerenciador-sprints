@@ -6,6 +6,7 @@ public enum StatusItem {
     REFINADO("Refinado"),
     EM_EXECUCAO("Em Execução"),
     EM_TESTES("Em Testes"),
+    IMPLANTACAO("Implantação"),
     CONCLUIDO("Concluído"),
     CANCELADO("Cancelado"),
     IMPEDIDO("Impedido");

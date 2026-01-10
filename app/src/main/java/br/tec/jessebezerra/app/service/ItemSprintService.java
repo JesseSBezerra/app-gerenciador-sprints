@@ -301,6 +301,7 @@ public class ItemSprintService {
         item.setAplicacaoId(dto.getAplicacaoId());
         item.setPrioridade(dto.getPrioridade());
         item.setCodigoExterno(dto.getCodigoExterno());
+        item.setDataConclusao(dto.getDataConclusao());
         return item;
     }
 
@@ -320,6 +321,7 @@ public class ItemSprintService {
         dto.setAplicacaoId(item.getAplicacaoId());
         dto.setPrioridade(item.getPrioridade());
         dto.setCodigoExterno(item.getCodigoExterno());
+        dto.setDataConclusao(item.getDataConclusao());
         
         // Buscar nomes para exibição
         if (item.getSprintId() != null) {

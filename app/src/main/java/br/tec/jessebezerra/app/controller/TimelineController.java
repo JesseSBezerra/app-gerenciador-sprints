@@ -149,7 +149,7 @@ public class TimelineController extends BaseController {
         int extraColumnsWidth = 0;
         if (showCodigoExterno) {
             extraColumnsCount++;
-            extraColumnsWidth += 100;
+            extraColumnsWidth += 150;
         }
         if (showProjeto) {
             extraColumnsCount++;
@@ -413,7 +413,7 @@ public class TimelineController extends BaseController {
         int extraColumnsCount = 0;
         
         if (showCodigoExterno) {
-            extraColumnsWidth += 100;
+            extraColumnsWidth += 150;
             extraColumnsCount++;
         }
         if (showProjeto) {
@@ -435,7 +435,7 @@ public class TimelineController extends BaseController {
         }
         
         int roadmapWidth = 580 + extraColumnsWidth;
-        int itensSprintWidth = 430 + (showCodigoExterno ? 100 : 0);
+        int itensSprintWidth = 430 + (showCodigoExterno ? 150 : 0);
         int pessoasWidth = 150;
         int currentCol = 0;
         
@@ -565,7 +565,7 @@ public class TimelineController extends BaseController {
             }
         }
         
-        // LINHA 2: Detalhes (TIPO, CÓDIGO EXTERNO, TÍTULO, PESSOAS) + Dias
+        // LINHA 2: Detalhes (TIPO, ID, TÍTULO, PESSOAS) + Dias
         Label tipoLabel = new Label("TIPO");
         tipoLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
             "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
@@ -578,13 +578,13 @@ public class TimelineController extends BaseController {
         
         currentCol = 1;
         
-        // Adicionar coluna CÓDIGO EXTERNO na linha 2 se visível
+        // Adicionar coluna ID na linha 2 se visível
         if (showCodigoExterno) {
-            Label codigoExternoLabel = new Label("CÓDIGO EXTERNO");
+            Label codigoExternoLabel = new Label("ID");
             codigoExternoLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 11px; " +
                 "-fx-background-color: #E0E0E0; -fx-padding: 5; -fx-alignment: center;");
-            codigoExternoLabel.setMinWidth(100);
-            codigoExternoLabel.setMaxWidth(100);
+            codigoExternoLabel.setMinWidth(150);
+            codigoExternoLabel.setMaxWidth(150);
             codigoExternoLabel.setMinHeight(25);
             codigoExternoLabel.setMaxHeight(25);
             codigoExternoLabel.setAlignment(Pos.CENTER);
@@ -722,12 +722,12 @@ public class TimelineController extends BaseController {
         
         int currentCol = 1;
         
-        // Coluna de Código Externo (se visível)
+        // Coluna de ID (se visível)
         if (showCodigoExternoCheckBox.isSelected()) {
             Label codigoExternoLabel = new Label(item.getCodigoExterno() != null ? item.getCodigoExterno() : "-");
             codigoExternoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-background-color: white; -fx-padding: 5;");
-            codigoExternoLabel.setMinWidth(100);
-            codigoExternoLabel.setMaxWidth(100);
+            codigoExternoLabel.setMinWidth(150);
+            codigoExternoLabel.setMaxWidth(150);
             codigoExternoLabel.setMinHeight(30);
             codigoExternoLabel.setMaxHeight(30);
             codigoExternoLabel.setAlignment(Pos.CENTER);
@@ -824,9 +824,32 @@ public class TimelineController extends BaseController {
                     
                     // Verificar se este item pertence a esta Sprint e se este dia está dentro do período de alocação
                     if (sprint.getId().equals(item.getSprintId()) && i >= startDay && i < startDay + duration) {
+                        // Definir cor e estilo baseado no status
+                        String dayColor;
+                        String textColor;
+                        
+                        if (item.getStatus() == br.tec.jessebezerra.app.entity.StatusItem.IMPLANTACAO) {
+                            // Roxo escuro com fonte branca para IMPLANTACAO
+                            dayColor = "#8B008B";
+                            textColor = "white";
+                        } else if (item.getDataConclusao() != null && item.getTipo() == TipoItem.SUB) {
+                            // Verde claro se a SUB estiver concluída
+                            dayColor = "#90EE90";
+                            textColor = "#333";
+                        } else {
+                            // Cor padrão do item
+                            dayColor = color;
+                            textColor = "#333";
+                        }
+                        
                         dayCell.setStyle(String.format("-fx-background-color: %s; -fx-border-color: white; " +
-                            "-fx-border-width: 0; -fx-text-fill: #333; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 0;", color));
+                            "-fx-border-width: 0; -fx-text-fill: %s; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 0;", dayColor, textColor));
                         dayCell.setText(String.valueOf(sprintDays.get(i).getDayOfMonth()));
+                        
+                        // Adicionar menu de contexto para todos os itens
+                        final int dayIndex = i;
+                        final LocalDate clickedDate = sprintDays.get(i);
+                        setupDayContextMenu(dayCell, item, clickedDate, dayIndex, startDay);
                     } else {
                         dayCell.setStyle("-fx-background-color: transparent; -fx-padding: 0;");
                     }
@@ -991,11 +1014,35 @@ public class TimelineController extends BaseController {
     }
     
     /**
-     * Abre detalhes do item (História ou Tarefa)
+     * Abre detalhes do item (Feature, História, Tarefa ou SUB)
      */
     private void openItemDetails(ItemSprintDTO item) {
         try {
-            String viewName = item.getTipo() == TipoItem.HISTORIA ? "historia-view.fxml" : "tarefa-view.fxml";
+            String viewName;
+            String title;
+            
+            switch (item.getTipo()) {
+                case FEATURE:
+                    viewName = "feature-view.fxml";
+                    title = "Detalhes da Feature";
+                    break;
+                case HISTORIA:
+                    viewName = "historia-view.fxml";
+                    title = "Detalhes da História";
+                    break;
+                case TAREFA:
+                    viewName = "tarefa-view.fxml";
+                    title = "Detalhes da Tarefa";
+                    break;
+                case SUB:
+                    viewName = "sub-view.fxml";
+                    title = "Detalhes da SUB";
+                    break;
+                default:
+                    showErrorAlert("Erro", "Tipo de item não suportado: " + item.getTipo());
+                    return;
+            }
+            
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                 getClass().getResource("/br/tec/jessebezerra/app/" + viewName)
             );
@@ -1004,18 +1051,32 @@ public class TimelineController extends BaseController {
             
             // Obter controller e passar o item para edição
             Object controller = loader.getController();
-            if (item.getTipo() == TipoItem.HISTORIA) {
-                br.tec.jessebezerra.app.controller.HistoriaController historiaController = 
-                    (br.tec.jessebezerra.app.controller.HistoriaController) controller;
-                historiaController.editItem(item);
-            } else {
-                br.tec.jessebezerra.app.controller.TarefaController tarefaController = 
-                    (br.tec.jessebezerra.app.controller.TarefaController) controller;
-                tarefaController.editItem(item);
+            
+            switch (item.getTipo()) {
+                case FEATURE:
+                    br.tec.jessebezerra.app.controller.FeatureController featureController = 
+                        (br.tec.jessebezerra.app.controller.FeatureController) controller;
+                    featureController.editItem(item);
+                    break;
+                case HISTORIA:
+                    br.tec.jessebezerra.app.controller.HistoriaController historiaController = 
+                        (br.tec.jessebezerra.app.controller.HistoriaController) controller;
+                    historiaController.editItem(item);
+                    break;
+                case TAREFA:
+                    br.tec.jessebezerra.app.controller.TarefaController tarefaController = 
+                        (br.tec.jessebezerra.app.controller.TarefaController) controller;
+                    tarefaController.editItem(item);
+                    break;
+                case SUB:
+                    br.tec.jessebezerra.app.controller.SubController subController = 
+                        (br.tec.jessebezerra.app.controller.SubController) controller;
+                    subController.editItem(item);
+                    break;
             }
             
             javafx.stage.Stage stage = new javafx.stage.Stage();
-            stage.setTitle(item.getTipo() == TipoItem.HISTORIA ? "Detalhes da História" : "Detalhes da Tarefa");
+            stage.setTitle(title);
             stage.setScene(new javafx.scene.Scene(root, 1200, 800));
             stage.setResizable(true);
             stage.setMinWidth(800);
@@ -1593,6 +1654,128 @@ public class TimelineController extends BaseController {
         // Adicionar cursor de mão para indicar que é arrastável
         row.setOnMouseEntered(event -> row.setStyle(row.getStyle() + "-fx-cursor: hand;"));
         row.setOnMouseExited(event -> row.setStyle(row.getStyle().replace("-fx-cursor: hand;", "")));
+    }
+    
+    /**
+     * Configura menu de contexto para dias de itens
+     */
+    private void setupDayContextMenu(Label dayCell, ItemSprintDTO item, LocalDate clickedDate, int dayIndex, int startDay) {
+        ContextMenu contextMenu = new ContextMenu();
+        
+        // Opção "Ver" (para todos os itens)
+        MenuItem verItem = new MenuItem("Ver");
+        verItem.setOnAction(event -> {
+            try {
+                openItemDetails(item);
+            } catch (Exception e) {
+                showErrorAlert("Erro", "Erro ao abrir detalhes: " + e.getMessage());
+            }
+        });
+        contextMenu.getItems().add(verItem);
+        contextMenu.getItems().add(new SeparatorMenuItem());
+        
+        // Opção "Marcar como Concluído" (para SUBs - ajusta duração)
+        if (item.getTipo() == TipoItem.SUB) {
+            MenuItem marcarConcluidoItem = new MenuItem("Marcar como Concluído neste dia");
+            marcarConcluidoItem.setOnAction(event -> {
+                try {
+                    // Atualizar data de conclusão
+                    item.setDataConclusao(clickedDate);
+                    
+                    // Calcular nova duração até o dia clicado (inclusive)
+                    int novaDuracao = dayIndex - startDay + 1;
+                    item.setDuracaoDias(novaDuracao);
+                    
+                    // Salvar no banco
+                    ItemSprintService service = new ItemSprintService();
+                    service.update(item);
+                    
+                    // Recarregar timeline
+                    loadAndBuildTimeline();
+                    
+                    showAlert("Sucesso", "SUB marcada como concluída em " + 
+                        clickedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    showErrorAlert("Erro", "Erro ao marcar SUB como concluída: " + e.getMessage());
+                }
+            });
+            contextMenu.getItems().add(marcarConcluidoItem);
+            
+            // Opção "Remover Conclusão" (se já estiver concluída)
+            if (item.getDataConclusao() != null) {
+                MenuItem removerConclusaoItem = new MenuItem("Remover Conclusão");
+                removerConclusaoItem.setOnAction(event -> {
+                    try {
+                        // Remover data de conclusão
+                        item.setDataConclusao(null);
+                        
+                        // Salvar no banco
+                        ItemSprintService service = new ItemSprintService();
+                        service.update(item);
+                        
+                        // Recarregar timeline
+                        loadAndBuildTimeline();
+                        
+                        showAlert("Sucesso", "Conclusão removida da SUB");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showErrorAlert("Erro", "Erro ao remover conclusão: " + e.getMessage());
+                    }
+                });
+                contextMenu.getItems().add(removerConclusaoItem);
+            }
+            
+            contextMenu.getItems().add(new SeparatorMenuItem());
+        }
+        
+        // Opção "Alterar Status para Concluído" (para todos os itens)
+        MenuItem statusConcluidoItem = new MenuItem("Alterar Status para Concluído");
+        statusConcluidoItem.setOnAction(event -> {
+            try {
+                item.setStatus(br.tec.jessebezerra.app.entity.StatusItem.CONCLUIDO);
+                
+                // Salvar no banco
+                ItemSprintService service = new ItemSprintService();
+                service.update(item);
+                
+                // Recarregar timeline
+                loadAndBuildTimeline();
+                
+                showAlert("Sucesso", "Status alterado para Concluído");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showErrorAlert("Erro", "Erro ao alterar status: " + e.getMessage());
+            }
+        });
+        
+        // Opção "Alterar Status para Implantação" (para todos os itens)
+        MenuItem statusImplantacaoItem = new MenuItem("Alterar Status para Implantação");
+        statusImplantacaoItem.setOnAction(event -> {
+            try {
+                item.setStatus(br.tec.jessebezerra.app.entity.StatusItem.IMPLANTACAO);
+                
+                // Salvar no banco
+                ItemSprintService service = new ItemSprintService();
+                service.update(item);
+                
+                // Recarregar timeline
+                loadAndBuildTimeline();
+                
+                showAlert("Sucesso", "Status alterado para Implantação");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showErrorAlert("Erro", "Erro ao alterar status: " + e.getMessage());
+            }
+        });
+        
+        contextMenu.getItems().addAll(statusConcluidoItem, statusImplantacaoItem);
+        
+        // Adicionar menu de contexto à célula do dia
+        dayCell.setOnContextMenuRequested(event -> {
+            contextMenu.show(dayCell, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
     }
     
     @Override

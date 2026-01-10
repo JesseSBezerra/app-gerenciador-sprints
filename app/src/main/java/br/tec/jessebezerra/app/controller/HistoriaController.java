@@ -25,6 +25,7 @@ import java.util.Optional;
 public class HistoriaController extends BaseController {
     
     @FXML private TextField tituloField;
+    @FXML private TextField codigoExternoField;
     @FXML private TextArea descricaoTextArea;
     @FXML private Spinner<Integer> duracaoSpinner;
     @FXML private ComboBox<StatusItem> statusComboBox;
@@ -126,6 +127,7 @@ public class HistoriaController extends BaseController {
         dto.setDuracaoSemanas(duracaoSpinner.getValue());
         dto.setStatus(statusComboBox.getValue());
         dto.setSprintId(sprintComboBox.getValue().getId());
+        dto.setCodigoExterno(codigoExternoField.getText().trim().isEmpty() ? null : codigoExternoField.getText().trim());
         
         if (membroComboBox.getValue() != null) {
             dto.setMembroId(membroComboBox.getValue().getId());
@@ -340,6 +342,7 @@ public class HistoriaController extends BaseController {
     private void clearForm() {
         editingId = null;
         tituloField.clear();
+        codigoExternoField.clear();
         descricaoTextArea.clear();
         duracaoSpinner.getValueFactory().setValue(1);
         statusComboBox.setValue(StatusItem.CRIADO);
@@ -502,6 +505,7 @@ public class HistoriaController extends BaseController {
         
         // Preencher formulário com dados do item
         tituloField.setText(item.getTitulo());
+        codigoExternoField.setText(item.getCodigoExterno() != null ? item.getCodigoExterno() : "");
         descricaoTextArea.setText(item.getDescricao() != null ? item.getDescricao() : "");
         duracaoSpinner.getValueFactory().setValue(item.getDuracaoSemanas() != null ? item.getDuracaoSemanas() : 1);
         statusComboBox.setValue(item.getStatus());

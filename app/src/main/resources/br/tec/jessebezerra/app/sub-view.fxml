@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="br.tec.jessebezerra.app.controller.SubController"
+            stylesheets="@styles/sprint-styles.css"
+            styleClass="root-pane">
+    
+    <top>
+        <HBox styleClass="header-section" alignment="CENTER_LEFT" spacing="16">
+            <Label text="Detalhes da SUB" styleClass="header-title"/>
+        </HBox>
+    </top>
+    
+    <center>
+        <VBox spacing="20" styleClass="content-section">
+            <VBox.margin>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </VBox.margin>
+            
+            <GridPane hgap="15" vgap="15" styleClass="form-grid">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="20" minWidth="120"/>
+                    <ColumnConstraints percentWidth="30" hgrow="ALWAYS"/>
+                    <ColumnConstraints percentWidth="20" minWidth="120"/>
+                    <ColumnConstraints percentWidth="30" hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Título:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label"/>
+                <TextField fx:id="tituloField" promptText="Digite o título da SUB" 
+                          GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.columnSpan="3" 
+                          styleClass="form-field"/>
+                
+                <Label text="ID:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <TextField fx:id="codigoExternoField" promptText="Digite o ID (opcional)" 
+                          GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.columnSpan="3" 
+                          styleClass="form-field"/>
+                
+                <Label text="Sprint:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                <ComboBox fx:id="sprintComboBox" promptText="Selecione a sprint" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Duração (dias):" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="form-label"/>
+                <Spinner fx:id="duracaoSpinner" GridPane.columnIndex="3" GridPane.rowIndex="2" 
+                        styleClass="form-field" maxWidth="Infinity" editable="true"/>
+                
+                <Label text="Item Pai:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="itemPaiComboBox" promptText="Selecione a História ou Tarefa" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Status:" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="form-label"/>
+                <ComboBox fx:id="statusComboBox" promptText="Selecione o status" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="3" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Membro:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+                <ComboBox fx:id="membroComboBox" promptText="Selecione o membro (opcional)" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="4" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Projeto:" GridPane.columnIndex="2" GridPane.rowIndex="4" styleClass="form-label"/>
+                <ComboBox fx:id="projetoComboBox" promptText="Selecione o projeto (opcional)" 
+                         GridPane.columnIndex="3" GridPane.rowIndex="4" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Aplicação:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>
+                <ComboBox fx:id="aplicacaoComboBox" promptText="Selecione a aplicação (opcional)" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="5" styleClass="form-field"
+                         maxWidth="Infinity"/>
+                
+                <Label text="Prioridade:" GridPane.columnIndex="2" GridPane.rowIndex="5" styleClass="form-label"/>
+                <Spinner fx:id="prioridadeSpinner" GridPane.columnIndex="3" GridPane.rowIndex="5" 
+                        styleClass="form-field" maxWidth="Infinity" editable="true"/>
+                
+                <Label text="Descrição:" GridPane.columnIndex="0" GridPane.rowIndex="6" styleClass="form-label"/>
+                <TextArea fx:id="descricaoTextArea" promptText="Digite a descrição da SUB" 
+                         GridPane.columnIndex="1" GridPane.rowIndex="6" GridPane.columnSpan="3" 
+                         styleClass="form-field" prefRowCount="3" wrapText="true"/>
+            </GridPane>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="button-bar">
+                <Button fx:id="salvarButton" text="Salvar" onAction="#onSalvarClick" styleClass="primary-btn"/>
+                <Button text="Limpar" onAction="#onLimparClick" styleClass="secondary-btn"/>
+                <Button text="Fechar" onAction="#onFecharClick" styleClass="secondary-btn"/>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

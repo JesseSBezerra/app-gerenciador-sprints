@@ -13,8 +13,8 @@ import java.util.Optional;
 public class ItemSprintRepository {
 
     public ItemSprint save(ItemSprint item) {
-        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id, prioridade, codigo_externo) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO item_sprint (tipo, titulo, descricao, duracao_semanas, duracao_dias, status, sprint_id, membro_id, item_pai_id, projeto_id, aplicacao_id, prioridade, codigo_externo, data_conclusao) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -72,6 +72,12 @@ public class ItemSprintRepository {
                 pstmt.setString(13, item.getCodigoExterno());
             } else {
                 pstmt.setNull(13, Types.VARCHAR);
+            }
+            
+            if (item.getDataConclusao() != null) {
+                pstmt.setDate(14, java.sql.Date.valueOf(item.getDataConclusao()));
+            } else {
+                pstmt.setNull(14, Types.DATE);
             }
             
             pstmt.executeUpdate();
@@ -91,7 +97,7 @@ public class ItemSprintRepository {
 
     public ItemSprint update(ItemSprint item) {
         String sql = "UPDATE item_sprint SET tipo = ?, titulo = ?, descricao = ?, duracao_semanas = ?, duracao_dias = ?, " +
-                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ?, prioridade = ?, codigo_externo = ? WHERE id = ?";
+                     "status = ?, sprint_id = ?, membro_id = ?, item_pai_id = ?, projeto_id = ?, aplicacao_id = ?, prioridade = ?, codigo_externo = ?, data_conclusao = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -151,7 +157,13 @@ public class ItemSprintRepository {
                 pstmt.setNull(13, Types.VARCHAR);
             }
             
-            pstmt.setLong(14, item.getId());
+            if (item.getDataConclusao() != null) {
+                pstmt.setDate(14, java.sql.Date.valueOf(item.getDataConclusao()));
+            } else {
+                pstmt.setNull(14, Types.DATE);
+            }
+            
+            pstmt.setLong(15, item.getId());
             
             pstmt.executeUpdate();
             return item;
@@ -341,6 +353,11 @@ public class ItemSprintRepository {
         String codigoExterno = rs.getString("codigo_externo");
         if (!rs.wasNull()) {
             item.setCodigoExterno(codigoExterno);
+        }
+        
+        java.sql.Date dataConclusao = rs.getDate("data_conclusao");
+        if (dataConclusao != null) {
+            item.setDataConclusao(dataConclusao.toLocalDate());
         }
         
         return item;

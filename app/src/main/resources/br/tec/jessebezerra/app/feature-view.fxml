@@ -60,8 +60,8 @@
                           GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.columnSpan="3" 
                           styleClass="form-field"/>
                 
-                <Label text="Código Externo:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
-                <TextField fx:id="codigoExternoField" promptText="Digite o código externo (opcional)" 
+                <Label text="ID:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                <TextField fx:id="codigoExternoField" promptText="Digite o ID (opcional)" 
                           GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.columnSpan="3" 
                           styleClass="form-field"/>
                 
